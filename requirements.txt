@@ -7,3 +7,4 @@ fake-useragent==2.0.3
 APScheduler==3.10.4
 html5lib==1.1
 gunicorn==23.0.0
+psycopg2-binary==2.9.10
