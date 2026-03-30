@@ -30,13 +30,9 @@ def live_scraper_loop(app):
     from scrapers.heycar import HeycarScraper
     from models import db, Car, CarImage, PriceHistory
 
+    # Nur Kleinanzeigen — die anderen Plattformen blockieren Scraping
     scrapers = [
-        ('mobile_de', MobileDeScraper()),
-        ('autoscout24', AutoScout24Scraper()),
         ('kleinanzeigen', KleinanzeigenScraper()),
-        ('pkw_de', PkwDeScraper()),
-        ('autohero', AutoheroScraper()),
-        ('heycar', HeycarScraper()),
     ]
 
     scraper_status['running'] = True
