@@ -430,12 +430,22 @@ def start_scheduler():
     logger.info(f"Scheduler gestartet (Alerts alle {app.config.get('ALERT_CHECK_INTERVAL', 30)} Min, BG-Scraper alle 2h)")
 
 
-# Scheduler und Background-Scraper beim Import starten (für gunicorn)
-start_scheduler()
+# Startup: Scheduler + Live-Scraper mit Fehlerbehandlung
+def _startup():
+    try:
+        start_scheduler()
+    except Exception as e:
+        logger.error(f"Scheduler-Start fehlgeschlagen: {e}")
 
-if app.config.get('LIVE_SCRAPE_ENABLED', True):
-    from services.live_scraper import start_live_scraper
-    start_live_scraper(app)
+    if app.config.get('LIVE_SCRAPE_ENABLED', True):
+        try:
+            from services.live_scraper import start_live_scraper
+            start_live_scraper(app)
+        except Exception as e:
+            logger.error(f"Live-Scraper-Start fehlgeschlagen: {e}")
+
+
+_startup()
 
 
 if __name__ == '__main__':

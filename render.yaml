@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: autoscraper
+    runtime: docker
+    plan: free
+    envVars:
+      - key: LIVE_SCRAPE_ENABLED
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
