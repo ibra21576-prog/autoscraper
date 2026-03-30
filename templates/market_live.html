@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+{% block title %}Live-Marktanalyse — AutoScraper{% endblock %}
+
+{% block content %}
+<section class="section-spacing">
+    <div class="section-header">
+        <p class="section-label">Playwright Browser-Analyse</p>
+        <h2 class="section-title">Live-Marktanalyse</h2>
+        <p style="color: var(--color-taupe); max-width: 560px; margin: 0 auto;">
+            Echtzeit-Preisanalyse direkt von AutoScout24, mobile.de &amp; Kleinanzeigen.
+            Nutzt einen Headless-Browser f&uuml;r zuverl&auml;ssige Daten.
+        </p>
+    </div>
+
+    <!-- ── Suchformular ── -->
+    <div class="search-card" style="margin-bottom: var(--spacing-xl);">
+        <div class="search-grid">
+            <div class="sahara-form-group">
+                <label class="sahara-label">Marke</label>
+                <select id="brandSelect" class="sahara-select" onchange="updateModels()">
+                    <option value="">Marke w&auml;hlen</option>
+                    {% for b in car_brands|sort %}
+                    <option value="{{ b }}">{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="sahara-form-group">
+                <label class="sahara-label">Modell</label>
+                <select id="modelSelect" class="sahara-select">
+                    <option value="">Erst Marke w&auml;hlen</option>
+                </select>
+            </div>
+            <div class="sahara-form-group">
+                <label class="sahara-label">Baujahr von</label>
+                <select id="yearFrom" class="sahara-select">
+                    <option value="">Beliebig</option>
+                </select>
+            </div>
+            <div class="sahara-form-group">
+                <label class="sahara-label">Baujahr bis</label>
+                <select id="yearTo" class="sahara-select">
+                    <option value="">Beliebig</option>
+                </select>
+            </div>
+            <div class="sahara-form-group">
+                <label class="sahara-label">Max. Kilometer</label>
+                <select id="kmTo" class="sahara-select">
+                    <option value="">Beliebig</option>
+                    <option value="10000">10.000 km</option>
+                    <option value="25000">25.000 km</option>
+                    <option value="50000">50.000 km</option>
+                    <option value="75000">75.000 km</option>
+                    <option value="100000">100.000 km</option>
+                    <option value="125000">125.000 km</option>
+                    <option value="150000">150.000 km</option>
+                    <option value="200000">200.000 km</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Plattform-Auswahl -->
+        <div style="display:flex; gap:var(--spacing-sm); flex-wrap:wrap; margin: var(--spacing-md) 0;">
+            <label class="platform-toggle active" onclick="togglePlatform(this)">
+                <input type="checkbox" value="autoscout24" checked hidden>
+                <span class="ptoggle-dot" style="background:var(--color-success);"></span>
+                AutoScout24
+            </label>
+            <label class="platform-toggle active" onclick="togglePlatform(this)">
+                <input type="checkbox" value="mobile" checked hidden>
+                <span class="ptoggle-dot" style="background:var(--color-success);"></span>
+                mobile.de
+            </label>
+            <label class="platform-toggle active" onclick="togglePlatform(this)">
+                <input type="checkbox" value="kleinanzeigen" checked hidden>
+                <span class="ptoggle-dot" style="background:var(--color-success);"></span>
+                Kleinanzeigen
+            </label>
+        </div>
+
+        <button class="btn-sahara" style="width:100%;" id="searchBtn" onclick="startSearch()">
+            LIVE-ANALYSE STARTEN
+        </button>
+    </div>
+
+    <!-- ── Loading ── -->
+    <div id="loadingState" style="display:none; text-align:center; padding: var(--spacing-2xl) 0;">
+        <div class="pw-spinner"></div>
+        <p style="font-family: var(--font-heading); font-size: 1.3rem; margin-top: var(--spacing-md);">
+            Daten werden gesammelt&hellip;
+        </p>
+        <p id="loadingMsg" style="color: var(--color-taupe); font-size: 0.85rem; margin-top: var(--spacing-xs);">
+            Headless-Browser scrapet die Plattformen
+        </p>
+    </div>
+
+    <!-- ── Keine Ergebnisse ── -->
+    <div id="noResults" style="display:none;">
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="bi bi-search"></i></div>
+            <h3>Keine Ergebnisse gefunden</h3>
+            <p>Versuche andere Suchkriterien oder w&auml;hle andere Plattformen.</p>
+        </div>
+    </div>
+
+    <!-- ── Ergebnisse ── -->
+    <div id="resultsSection" style="display:none;">
+
+        <!-- KPIs -->
+        <div id="kpiGrid" class="kpi-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:var(--spacing-md); margin-bottom:var(--spacing-xl);"></div>
+
+        <!-- Preisspanne -->
+        <div id="priceRange" class="detail-info-card" style="margin-bottom:var(--spacing-xl); padding:var(--spacing-lg);"></div>
+
+        <!-- Charts -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md); margin-bottom:var(--spacing-xl);">
+            <div class="chart-container" style="padding:var(--spacing-lg);">
+                <p class="section-label" style="margin-bottom:var(--spacing-md);">Preisverteilung</p>
+                <canvas id="liveDistChart" height="280"></canvas>
+            </div>
+            <div class="chart-container" style="padding:var(--spacing-lg);">
+                <p class="section-label" style="margin-bottom:var(--spacing-md);">Angebote nach Plattform</p>
+                <canvas id="liveSourceChart" height="280"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabelle -->
+        <div class="detail-info-card" style="margin-bottom:var(--spacing-xl);">
+            <p class="section-label" style="margin-bottom:var(--spacing-md);" id="tableLabel">Alle Angebote</p>
+            <div style="overflow-x:auto;">
+                <table class="detail-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">Fahrzeug</th>
+                            <th style="text-align:right;">Preis</th>
+                            <th style="text-align:right;">Kilometer</th>
+                            <th style="text-align:center;">Baujahr</th>
+                            <th style="text-align:center;">Plattform</th>
+                            <th style="text-align:center;">Bewertung</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .platform-toggle {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 16px; border: 1px solid var(--color-border);
+        border-radius: 4px; cursor: pointer; font-size: 0.82rem;
+        font-family: var(--font-body); transition: all var(--duration-short);
+        background: var(--color-card);
+    }
+    .platform-toggle.active { border-color: var(--color-black); }
+    .platform-toggle:not(.active) { opacity: 0.45; }
+    .ptoggle-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        transition: opacity var(--duration-short);
+    }
+    .platform-toggle:not(.active) .ptoggle-dot { opacity: 0.3; }
+
+    .pw-spinner {
+        width: 40px; height: 40px; margin: 0 auto;
+        border: 3px solid var(--color-border);
+        border-top-color: var(--color-bronze);
+        border-radius: 50%;
+        animation: pwspin 0.8s linear infinite;
+    }
+    @keyframes pwspin { to { transform: rotate(360deg); } }
+
+    .price-bar-outer {
+        position: relative; height: 48px; border-radius: 4px;
+        background: linear-gradient(to right,
+            rgba(74,124,89,0.15),
+            rgba(205,155,119,0.15),
+            rgba(180,74,62,0.15));
+        margin-bottom: var(--spacing-sm); overflow: hidden;
+    }
+    .price-bar-outer::after {
+        content: ''; position: absolute; top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: linear-gradient(to right, var(--color-success), var(--color-bronze), var(--color-danger));
+        opacity: 0.2; border-radius: 4px;
+    }
+    .price-marker {
+        position: absolute; top: 50%; transform: translate(-50%, -50%);
+        width: 3px; height: 28px; background: var(--color-black);
+        border-radius: 2px; z-index: 2;
+    }
+    .price-marker.median { background: var(--color-bronze); }
+
+    .badge-source {
+        display: inline-block; padding: 2px 10px; border-radius: 3px;
+        font-size: 0.72rem; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-source.src-autoscout { background: rgba(255,107,53,0.12); color: #FF6B35; }
+    .badge-source.src-mobile    { background: rgba(240,201,77,0.15); color: #C9A020; }
+    .badge-source.src-kleinanzeigen { background: rgba(74,124,89,0.12); color: var(--color-success); }
+
+    .eval-tag { font-size: 0.72rem; font-weight: 600; }
+    .eval-cheap { color: var(--color-success); }
+    .eval-expensive { color: var(--color-danger); }
+    .eval-normal { color: var(--color-taupe); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CAR_DATA = {{ car_data | tojson }};
+let distChart = null, srcChart = null;
+
+// ── Init ──
+(function() {
+    const y = new Date().getFullYear();
+    ['yearFrom','yearTo'].forEach(id => {
+        const s = document.getElementById(id);
+        for (let yr = y; yr >= 1990; yr--) {
+            const o = document.createElement('option');
+            o.value = yr; o.textContent = yr; s.appendChild(o);
+        }
+    });
+})();
+
+function updateModels() {
+    const brand = document.getElementById('brandSelect').value;
+    const ms = document.getElementById('modelSelect');
+    ms.innerHTML = '<option value="">Alle Modelle</option>';
+    if (brand && CAR_DATA[brand]) {
+        CAR_DATA[brand].forEach(m => {
+            const o = document.createElement('option');
+            o.value = m; o.textContent = m; ms.appendChild(o);
+        });
+    }
+}
+
+function togglePlatform(el) {
+    el.classList.toggle('active');
+    const cb = el.querySelector('input');
+    cb.checked = !cb.checked;
+}
+
+function fmt(p) { return p ? p.toLocaleString('de-DE') + ' €' : '–'; }
+function fmtKm(k) { return k ? k.toLocaleString('de-DE') + ' km' : '–'; }
+
+// ── Search ──
+async function startSearch() {
+    const brand = document.getElementById('brandSelect').value;
+    const model = document.getElementById('modelSelect').value;
+    if (!brand) { alert('Bitte wähle eine Marke.'); return; }
+
+    const sources = [];
+    document.querySelectorAll('.platform-toggle.active input').forEach(cb => sources.push(cb.value));
+    if (!sources.length) { alert('Bitte mindestens eine Plattform wählen.'); return; }
+
+    // UI states
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('noResults').style.display = 'none';
+    document.getElementById('searchBtn').disabled = true;
+    document.getElementById('searchBtn').textContent = 'ANALYSE LÄUFT...';
+    document.getElementById('searchBtn').style.opacity = '0.6';
+
+    const msgs = ['Browser wird gestartet...','AutoScout24 wird durchsucht...','mobile.de wird durchsucht...',
+                  'Kleinanzeigen wird durchsucht...','Daten werden analysiert...'];
+    let mi = 0;
+    const msgInt = setInterval(() => {
+        mi = (mi + 1) % msgs.length;
+        document.getElementById('loadingMsg').textContent = msgs[mi];
+    }, 3000);
+
+    try {
+        const resp = await fetch('/api/live-search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                brand, model,
+                year_from: document.getElementById('yearFrom').value || null,
+                year_to: document.getElementById('yearTo').value || null,
+                km_to: document.getElementById('kmTo').value || null,
+                sources
+            })
+        });
+        const data = await resp.json();
+        clearInterval(msgInt);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('searchBtn').disabled = false;
+        document.getElementById('searchBtn').textContent = 'LIVE-ANALYSE STARTEN';
+        document.getElementById('searchBtn').style.opacity = '1';
+
+        if (!data.count || !data.analysis) {
+            document.getElementById('noResults').style.display = 'block';
+            return;
+        }
+        renderAll(data);
+    } catch(e) {
+        clearInterval(msgInt);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('noResults').style.display = 'block';
+        document.getElementById('searchBtn').disabled = false;
+        document.getElementById('searchBtn').textContent = 'LIVE-ANALYSE STARTEN';
+        document.getElementById('searchBtn').style.opacity = '1';
+    }
+}
+
+// ── Render ──
+function renderAll(data) {
+    const a = data.analysis, r = data.results;
+    document.getElementById('resultsSection').style.display = 'block';
+
+    // KPIs
+    document.getElementById('kpiGrid').innerHTML = `
+        <div class="detail-info-card text-center">
+            <p class="section-label">Angebote gefunden</p>
+            <div style="font-family:var(--font-heading);font-size:1.8rem;">${a.total}</div>
+            <p style="font-size:0.72rem;color:var(--color-taupe);">von ${Object.keys(a.by_source).length} Plattform(en)</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Durchschnittspreis</p>
+            <div style="font-family:var(--font-heading);font-size:1.8rem;">${fmt(a.avg_price)}</div>
+            <p style="font-size:0.72rem;color:var(--color-taupe);">Median: ${fmt(a.median_price)}</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">G&uuml;nstigstes</p>
+            <div style="font-family:var(--font-heading);font-size:1.8rem;color:var(--color-success);">${fmt(a.min_price)}</div>
+            <p style="font-size:0.72rem;color:var(--color-taupe);">Q1: ${fmt(a.q1)}</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Teuerstes</p>
+            <div style="font-family:var(--font-heading);font-size:1.8rem;color:var(--color-danger);">${fmt(a.max_price)}</div>
+            <p style="font-size:0.72rem;color:var(--color-taupe);">Q3: ${fmt(a.q3)}</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Streuung</p>
+            <div style="font-family:var(--font-heading);font-size:1.8rem;color:var(--color-info);">&plusmn; ${fmt(a.std_dev)}</div>
+            <p style="font-size:0.72rem;color:var(--color-taupe);">Standardabweichung</p>
+        </div>
+    `;
+
+    // Preisspanne
+    const range = a.max_price - a.min_price;
+    const avgPos = range > 0 ? ((a.avg_price - a.min_price) / range * 100) : 50;
+    const medPos = range > 0 ? ((a.median_price - a.min_price) / range * 100) : 50;
+    document.getElementById('priceRange').innerHTML = `
+        <p class="section-label" style="margin-bottom:var(--spacing-md);">Preisspanne &amp; Einordnung</p>
+        <div class="price-bar-outer">
+            <div class="price-marker" style="left:${avgPos}%"></div>
+            <div class="price-marker median" style="left:${medPos}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:var(--spacing-md);">
+            <div><span style="color:var(--color-success);">G&uuml;nstigster</span><br>
+                <strong style="font-family:var(--font-heading);font-size:1.1rem;">${fmt(a.min_price)}</strong></div>
+            <div style="text-align:center;color:var(--color-taupe);font-size:0.72rem;">
+                <span style="display:inline-block;width:3px;height:12px;background:var(--color-black);border-radius:1px;vertical-align:middle;margin-right:4px;"></span>Durchschnitt
+                &nbsp;&nbsp;
+                <span style="display:inline-block;width:3px;height:12px;background:var(--color-bronze);border-radius:1px;vertical-align:middle;margin-right:4px;"></span>Median
+            </div>
+            <div style="text-align:right;"><span style="color:var(--color-danger);">Teuerster</span><br>
+                <strong style="font-family:var(--font-heading);font-size:1.1rem;">${fmt(a.max_price)}</strong></div>
+        </div>
+        <div style="text-align:center;padding:var(--spacing-md);background:var(--color-sand);border-radius:4px;">
+            <p style="font-size:0.72rem;color:var(--color-taupe);margin-bottom:4px;">Realistische Preisspanne (25.&ndash;75. Perzentil)</p>
+            <p style="font-family:var(--font-heading);font-size:1.4rem;">${fmt(a.realistic_min)} &mdash; ${fmt(a.realistic_max)}</p>
+        </div>
+    `;
+
+    // Charts
+    renderCharts(a);
+
+    // Tabelle
+    renderTable(r, a);
+}
+
+function renderCharts(a) {
+    // Preisverteilung
+    if (distChart) distChart.destroy();
+    const ctx1 = document.getElementById('liveDistChart').getContext('2d');
+    distChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(a.price_ranges),
+            datasets: [{
+                data: Object.values(a.price_ranges),
+                backgroundColor: 'rgba(205,155,119,0.5)',
+                borderColor: '#CD9B77', borderWidth: 1, borderRadius: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#5E5A59', font: { size: 10 }, maxRotation: 35 }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: '#5E5A59', stepSize: 1 }, grid: { color: '#E6E2E1' } }
+            }
+        }
+    });
+
+    // Plattform-Donut
+    if (srcChart) srcChart.destroy();
+    const ctx2 = document.getElementById('liveSourceChart').getContext('2d');
+    const srcLabels = Object.keys(a.by_source);
+    const srcValues = srcLabels.map(s => a.by_source[s].count);
+    const colorMap = {'AutoScout24':'#FF6B35','mobile.de':'#F0C94D','Kleinanzeigen':'#4A7C59'};
+    const srcColors = srcLabels.map(s => colorMap[s] || '#CD9B77');
+    srcChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: srcLabels,
+            datasets: [{ data: srcValues, backgroundColor: srcColors, borderColor: '#FAF7F4', borderWidth: 3 }]
+        },
+        options: {
+            responsive: true, cutout: '62%',
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#5E5A59', padding: 14, font: { size: 11 } } },
+                tooltip: { backgroundColor: '#111', bodyColor: '#E6E2E1', padding: 12 }
+            }
+        }
+    });
+}
+
+function renderTable(results, analysis) {
+    const avg = analysis.avg_price;
+    const sorted = [...results].sort((a, b) => (a.price||0) - (b.price||0));
+    document.getElementById('tableLabel').textContent = `Alle Angebote (${results.length})`;
+
+    const body = document.getElementById('resultsBody');
+    body.innerHTML = sorted.map(r => {
+        let evalClass = 'eval-normal', evalText = '';
+        if (r.price < avg * 0.85) { evalClass = 'eval-cheap'; evalText = '▼ Günstig'; }
+        else if (r.price > avg * 1.15) { evalClass = 'eval-expensive'; evalText = '▲ Teuer'; }
+
+        let srcClass = 'src-mobile';
+        if (r.source.includes('Scout')) srcClass = 'src-autoscout';
+        if (r.source.includes('lein')) srcClass = 'src-kleinanzeigen';
+
+        return `<tr>
+            <td>${r.title}</td>
+            <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums;
+                color:${evalClass==='eval-cheap'?'var(--color-success)':evalClass==='eval-expensive'?'var(--color-danger)':'inherit'}">
+                ${fmt(r.price)}</td>
+            <td style="text-align:right;">${fmtKm(r.km)}</td>
+            <td style="text-align:center;">${r.year || '–'}</td>
+            <td style="text-align:center;"><span class="badge-source ${srcClass}">${r.source}</span></td>
+            <td style="text-align:center;"><span class="eval-tag ${evalClass}">${evalText}</span></td>
+        </tr>`;
+    }).join('');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}AutoScraper — Finde dein Traumauto{% endblock %}
+
+{% block hero %}
+<section class="sahara-hero">
+    <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80');"></div>
+    <div class="hero-content">
+        <p class="hero-subtitle">Mobile.de &middot; AutoScout24 &middot; Kleinanzeigen</p>
+        <h1 class="hero-title">Finde dein<br><em>Traumauto</em></h1>
+        <div class="divider" style="background: var(--color-bronze); margin: 1.6rem auto;"></div>
+        <a href="#search" class="btn-sahara-light">Jetzt suchen</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<section class="section-spacing" id="search">
+    <div class="section-header">
+        <p class="section-label">Fahrzeugsuche</p>
+        <h2 class="section-title">Alle Plattformen, eine Suche</h2>
+    </div>
+
+    <div class="search-card">
+        <form action="{{ url_for('search') }}" method="GET" id="searchForm">
+            <div class="search-grid">
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Marke</label>
+                    <select name="brand" class="sahara-select">
+                        <option value="">Alle Marken</option>
+                        <option>Alfa Romeo</option>
+                        <option>Audi</option>
+                        <option>BMW</option>
+                        <option>Chevrolet</option>
+                        <option>Citroen</option>
+                        <option>Cupra</option>
+                        <option>Dacia</option>
+                        <option>Fiat</option>
+                        <option>Ford</option>
+                        <option>Honda</option>
+                        <option>Hyundai</option>
+                        <option>Jaguar</option>
+                        <option>Jeep</option>
+                        <option>Kia</option>
+                        <option>Land Rover</option>
+                        <option>Lexus</option>
+                        <option>Mazda</option>
+                        <option>Mercedes-Benz</option>
+                        <option>Mini</option>
+                        <option>Mitsubishi</option>
+                        <option>Nissan</option>
+                        <option>Opel</option>
+                        <option>Peugeot</option>
+                        <option>Porsche</option>
+                        <option>Renault</option>
+                        <option>Seat</option>
+                        <option>Skoda</option>
+                        <option>Smart</option>
+                        <option>Subaru</option>
+                        <option>Suzuki</option>
+                        <option>Tesla</option>
+                        <option>Toyota</option>
+                        <option>Volkswagen</option>
+                        <option>Volvo</option>
+                    </select>
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Modell</label>
+                    <input type="text" name="model" class="sahara-input" placeholder="z.B. A4, 3er, Golf...">
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Preis von</label>
+                    <input type="number" name="price_min" class="sahara-input" placeholder="Min. EUR">
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Preis bis</label>
+                    <input type="number" name="price_max" class="sahara-input" placeholder="Max. EUR">
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Baujahr ab</label>
+                    <select name="year_min" class="sahara-select">
+                        <option value="">Beliebig</option>
+                        {% for year in range(2026, 1989, -1) %}
+                        <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Kilometerstand bis</label>
+                    <select name="mileage_max" class="sahara-select">
+                        <option value="">Beliebig</option>
+                        <option value="10000">10.000 km</option>
+                        <option value="25000">25.000 km</option>
+                        <option value="50000">50.000 km</option>
+                        <option value="75000">75.000 km</option>
+                        <option value="100000">100.000 km</option>
+                        <option value="150000">150.000 km</option>
+                        <option value="200000">200.000 km</option>
+                    </select>
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Kraftstoff</label>
+                    <select name="fuel_type" class="sahara-select">
+                        <option value="">Alle</option>
+                        <option value="benzin">Benzin</option>
+                        <option value="diesel">Diesel</option>
+                        <option value="elektro">Elektro</option>
+                        <option value="hybrid">Hybrid</option>
+                        <option value="gas">Gas (LPG/CNG)</option>
+                    </select>
+                </div>
+
+                <div class="sahara-form-group full-width">
+                    <label class="sahara-label">Plattformen</label>
+                    <div style="display: flex; gap: 16px; padding-top: 8px; flex-wrap: wrap;">
+                        <label class="sahara-checkbox">
+                            <input type="checkbox" name="platforms" value="mobile_de" checked> Mobile.de
+                        </label>
+                        <label class="sahara-checkbox">
+                            <input type="checkbox" name="platforms" value="autoscout24" checked> AutoScout24
+                        </label>
+                        <label class="sahara-checkbox">
+                            <input type="checkbox" name="platforms" value="kleinanzeigen" checked> Kleinanzeigen
+                        </label>
+                        <label class="sahara-checkbox">
+                            <input type="checkbox" name="platforms" value="pkw_de" checked> pkw.de
+                        </label>
+                        <label class="sahara-checkbox">
+                            <input type="checkbox" name="platforms" value="autohero" checked> Autohero
+                        </label>
+                        <label class="sahara-checkbox">
+                            <input type="checkbox" name="platforms" value="heycar" checked> heycar
+                        </label>
+                    </div>
+                </div>
+
+                <div class="sahara-form-group full-width" style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
+                    <button type="submit" class="btn-sahara" style="flex: 3;" id="searchBtn">
+                        SUCHE STARTEN
+                    </button>
+                    <button type="submit" form="marketForm" class="btn-sahara-outline" style="flex: 1;">
+                        MARKT ANALYSIEREN
+                    </button>
+                </div>
+            </div>
+        </form>
+        <!-- Hidden form for Market redirect -->
+        <form id="marketForm" action="{{ url_for('market') }}" method="GET" style="display:none;">
+            <input type="hidden" name="brand" id="mf_brand">
+            <input type="hidden" name="model" id="mf_model">
+            <input type="hidden" name="fuel_type" id="mf_fuel">
+            <input type="hidden" name="days" value="90">
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sync search form values to market form before submit
+document.querySelector('[form="marketForm"]')?.addEventListener('click', function() {
+    document.getElementById('mf_brand').value = document.querySelector('[name="brand"]').value;
+    document.getElementById('mf_model').value = document.querySelector('[name="model"]').value;
+    document.getElementById('mf_fuel').value = document.querySelector('[name="fuel_type"]').value;
+});
+</script>
+{% endblock %}

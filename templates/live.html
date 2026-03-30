@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Live Feed — AutoScraper{% endblock %}
+
+{% block content %}
+<section class="section-spacing">
+    <!-- Header -->
+    <div class="live-header">
+        <div class="live-title">
+            <span class="live-dot-lg"></span>
+            <h2 class="section-title" style="margin-bottom:0;">Live Feed</h2>
+            <span class="live-count" id="totalCount">{{ status.total_found }} gefunden</span>
+        </div>
+        <div class="live-status" id="statusText">
+            {% if status.running %}
+            Scannt <strong id="currentPlatform">{{ status.current_platform or '...' }}</strong>
+            <span id="lastScrape">{{ status.last_scrape or '' }}</span>
+            {% else %}
+            Scraper nicht aktiv
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-bar">
+        <button class="filter-btn active" data-platform="all">Alle</button>
+        <button class="filter-btn" data-platform="mobile_de">Mobile.de</button>
+        <button class="filter-btn" data-platform="autoscout24">AutoScout24</button>
+        <button class="filter-btn" data-platform="kleinanzeigen">Kleinanzeigen</button>
+    </div>
+
+    <!-- Feed -->
+    <div class="product-grid" id="liveFeed">
+        {% for car in cars %}
+        <div class="sahara-card car-item" data-platform="{{ car.platform }}">
+            <div class="card-image-wrapper">
+                {% if car.image_url %}
+                <img src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy"
+                     onerror="this.parentElement.innerHTML='<div class=card-image-placeholder><i class=bi bi-car-front></i></div>'"
+                     referrerpolicy="no-referrer">
+                {% else %}
+                <div class="card-image-placeholder">
+                    <i class="bi bi-car-front"></i>
+                </div>
+                {% endif %}
+                {% set platform_map = {
+                    'mobile_de': ('Mobile.de', 'badge-mobile'),
+                    'autoscout24': ('AutoScout24', 'badge-autoscout'),
+                    'kleinanzeigen': ('Kleinanzeigen', 'badge-kleinanzeigen'),
+                    'pkw_de': ('pkw.de', 'badge-pkw'),
+                    'autohero': ('Autohero', 'badge-autohero'),
+                    'heycar': ('heycar', 'badge-heycar'),
+                } %}
+                {% set pm = platform_map.get(car.platform, (car.platform, '')) %}
+                <span class="card-badge {{ pm[1] }}">{{ pm[0] }}</span>
+            </div>
+            <div class="card-body-sahara">
+                <h3 class="card-title-sahara">
+                    <a href="{{ url_for('car_detail', car_id=car.id) }}">{{ car.title or 'Unbekannt' }}</a>
+                </h3>
+                <div class="card-price">
+                    {% if car.price %}{{ "{:,.0f}".format(car.price).replace(",", ".") }} &euro;{% else %}Auf Anfrage{% endif %}
+                </div>
+                <div class="card-specs">
+                    {% if car.year %}<span class="spec-tag">{{ car.year }}</span>{% endif %}
+                    {% if car.mileage %}<span class="spec-tag">{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</span>{% endif %}
+                    {% if car.fuel_type %}<span class="spec-tag">{{ car.fuel_type }}</span>{% endif %}
+                    {% if car.power %}<span class="spec-tag">{{ car.power }}</span>{% endif %}
+                </div>
+                {% if car.location %}
+                <div class="card-location"><i class="bi bi-geo-alt"></i> {{ car.location }}</div>
+                {% endif %}
+                <div class="card-actions">
+                    {% if car.url %}
+                    <a href="{{ car.url }}" target="_blank" class="btn-sahara-outline btn-sahara-sm">Ansehen</a>
+                    {% endif %}
+                    <a href="{{ url_for('car_detail', car_id=car.id) }}" class="btn-sahara btn-sahara-sm" style="flex:1; text-align:center;">Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not cars %}
+    <div class="empty-state" id="emptyState">
+        <div class="sahara-spinner" style="width:32px;height:32px;margin-bottom:var(--spacing-md);"></div>
+        <h3>Warte auf neue Inserate...</h3>
+        <p>Der Live-Scraper durchsucht Mobile.de, AutoScout24, Kleinanzeigen, pkw.de, Autohero & heycar</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// SSE Live-Stream
+const evtSource = new EventSource('/api/stream');
+let activeFilter = 'all';
+
+evtSource.onmessage = function(event) {
+    const car = JSON.parse(event.data);
+    addCarToFeed(car);
+    const countEl = document.getElementById('totalCount');
+    const current = parseInt(countEl.textContent) || 0;
+    countEl.textContent = (current + 1) + ' gefunden';
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.remove();
+};
+
+function addCarToFeed(car) {
+    const feed = document.getElementById('liveFeed');
+    const el = document.createElement('div');
+    el.className = 'sahara-card car-item fade-in-card';
+    el.dataset.platform = car.platform;
+
+    if (activeFilter !== 'all' && car.platform !== activeFilter) {
+        el.style.display = 'none';
+    }
+
+    const badgeClass = {
+        'mobile_de':'badge-mobile','autoscout24':'badge-autoscout','kleinanzeigen':'badge-kleinanzeigen',
+        'pkw_de':'badge-pkw','autohero':'badge-autohero','heycar':'badge-heycar'
+    }[car.platform] || '';
+    const platformName = {
+        'mobile_de':'Mobile.de','autoscout24':'AutoScout24','kleinanzeigen':'Kleinanzeigen',
+        'pkw_de':'pkw.de','autohero':'Autohero','heycar':'heycar'
+    }[car.platform] || car.platform;
+    const priceStr = car.price ? car.price.toLocaleString('de-DE') + ' \u20AC' : 'Auf Anfrage';
+    const mileageStr = car.mileage ? car.mileage.toLocaleString('de-DE') + ' km' : '';
+    const imgSrc = car.image_url || '';
+    const detailUrl = '/car/' + car.id;
+
+    const imgHtml = imgSrc
+        ? `<img src="${imgSrc}" alt="${car.title||''}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<div class=card-image-placeholder><i class=bi bi-car-front></i></div>'">`
+        : '<div class="card-image-placeholder"><i class="bi bi-car-front"></i></div>';
+
+    el.innerHTML = `
+        <div class="card-image-wrapper">
+            ${imgHtml}
+            <span class="card-badge ${badgeClass}">${platformName}</span>
+            <span class="badge-new">NEU</span>
+        </div>
+        <div class="card-body-sahara">
+            <h3 class="card-title-sahara"><a href="${detailUrl}">${car.title || 'Unbekannt'}</a></h3>
+            <div class="card-price">${priceStr}</div>
+            <div class="card-specs">
+                ${car.year ? `<span class="spec-tag">${car.year}</span>` : ''}
+                ${mileageStr ? `<span class="spec-tag">${mileageStr}</span>` : ''}
+                ${car.fuel_type ? `<span class="spec-tag">${car.fuel_type}</span>` : ''}
+                ${car.power ? `<span class="spec-tag">${car.power}</span>` : ''}
+            </div>
+            ${car.location ? `<div class="card-location"><i class="bi bi-geo-alt"></i> ${car.location}</div>` : ''}
+            <div class="card-actions">
+                ${car.url ? `<a href="${car.url}" target="_blank" class="btn-sahara-outline btn-sahara-sm">Ansehen</a>` : ''}
+                <a href="${detailUrl}" class="btn-sahara btn-sahara-sm" style="flex:1;text-align:center;">Details</a>
+            </div>
+        </div>
+    `;
+
+    el.classList.add('new-car-glow');
+    feed.insertBefore(el, feed.firstChild);
+
+    setTimeout(() => {
+        const badge = el.querySelector('.badge-new');
+        if (badge) badge.remove();
+    }, 8000);
+}
+
+// Filter
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        activeFilter = this.dataset.platform;
+        document.querySelectorAll('.car-item').forEach(item => {
+            item.style.display = (activeFilter === 'all' || item.dataset.platform === activeFilter) ? '' : 'none';
+        });
+    });
+});
+
+// Status polling
+setInterval(async () => {
+    try {
+        const res = await fetch('/api/scraper-status');
+        const s = await res.json();
+        const p = document.getElementById('currentPlatform');
+        if (p) p.textContent = s.current_platform || '...';
+        const l = document.getElementById('lastScrape');
+        if (l) l.textContent = s.last_scrape || '';
+    } catch(e) {}
+}, 5000);
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Tracking — AutoScraper{% endblock %}
+
+{% block content %}
+<section class="section-spacing">
+    <div class="section-header">
+        <p class="section-label">Preisvergleich</p>
+        <h2 class="section-title">Getrackte Fahrzeuge</h2>
+    </div>
+
+    {% if cars %}
+    <div class="product-grid">
+        {% for car in cars %}
+        <div class="sahara-card reveal">
+            <div class="card-image-wrapper">
+                {% if car.image_url %}
+                <img src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy" referrerpolicy="no-referrer"
+                     onerror="this.parentElement.innerHTML='<div class=card-image-placeholder><i class=bi bi-car-front></i></div>'">
+                {% else %}
+                <div class="card-image-placeholder"><i class="bi bi-car-front"></i></div>
+                {% endif %}
+            </div>
+
+            <div class="card-body-sahara">
+                <h3 class="card-title-sahara">
+                    <a href="{{ url_for('car_detail', car_id=car.id) }}">{{ car.title }}</a>
+                </h3>
+
+                <div class="card-price">
+                    {% if car.price %}
+                    {{ "{:,.0f}".format(car.price).replace(",", ".") }} &euro;
+                    {% endif %}
+                    {% if car.price_change and car.price_change != 0 %}
+                    <span class="price-change {{ 'price-down' if car.price_change < 0 else 'price-up' }}">
+                        {{ '+' if car.price_change > 0 else '' }}{{ "{:,.0f}".format(car.price_change).replace(",", ".") }} &euro;
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="card-specs">
+                    {% if car.year %}<span class="spec-tag">{{ car.year }}</span>{% endif %}
+                    {% if car.mileage %}<span class="spec-tag">{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</span>{% endif %}
+                </div>
+
+                {% if car.price_history and car.price_history|length > 1 %}
+                <div style="margin: var(--spacing-sm) 0;">
+                    <canvas id="chart-{{ car.id }}" height="50"></canvas>
+                </div>
+                {% endif %}
+
+                <div class="card-actions">
+                    <a href="{{ url_for('car_detail', car_id=car.id) }}" class="btn-sahara-outline btn-sahara-sm">Details</a>
+                    <form action="{{ url_for('track', car_id=car.id) }}" method="POST" style="flex:1;">
+                        <input type="hidden" name="action" value="untrack">
+                        <button type="submit" class="btn-sahara btn-sahara-sm btn-sahara-danger" style="width:100%;">Entfernen</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="bi bi-bookmark"></i></div>
+        <h3>Keine getrackten Fahrzeuge</h3>
+        <p>Starte eine Suche und tracke Fahrzeuge, um Preis&auml;nderungen zu verfolgen.</p>
+        <a href="{{ url_for('index') }}" class="btn-sahara">Zur Suche</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% for car in cars %}
+{% if car.price_history and car.price_history|length > 1 %}
+renderMiniChart('chart-{{ car.id }}', {{ car.price_history | tojson }});
+{% endif %}
+{% endfor %}
+</script>
+{% endblock %}

@@ -1,0 +1,442 @@
+import json
+import os
+import time
+import logging
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
+from flask_mail import Mail
+from apscheduler.schedulers.background import BackgroundScheduler
+from config import Config
+from models import db, Car
+
+# Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Flask App
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# Instance-Ordner sicherstellen (für SQLite DB)
+os.makedirs(os.path.join(os.path.dirname(__file__), 'instance'), exist_ok=True)
+
+# Extensions
+db.init_app(app)
+mail = Mail(app)
+
+# DB erstellen (bestehende Tabellen bleiben erhalten)
+with app.app_context():
+    db.create_all()
+
+
+# --- ROUTEN ---
+
+@app.route('/')
+def index():
+    """Startseite mit Suchformular."""
+    return render_template('index.html')
+
+
+@app.route('/live')
+def live_feed():
+    """Live-Feed - neue Autos in Echtzeit."""
+    from services.live_scraper import get_scraper_status
+    status = get_scraper_status()
+    recent_cars = Car.query.order_by(Car.first_seen.desc()).limit(50).all()
+    return render_template('live.html', cars=recent_cars, status=status)
+
+
+@app.route('/api/stream')
+def stream():
+    """Server-Sent Events Endpoint für Live-Updates."""
+    from services.live_scraper import new_cars_queue
+
+    def event_stream():
+        while True:
+            try:
+                car = new_cars_queue.get(timeout=30)
+                data = json.dumps(car, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+            except Exception:
+                yield f": heartbeat\n\n"
+
+    return Response(event_stream(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+
+@app.route('/api/recent')
+def api_recent():
+    """Letzte Autos als JSON (Polling-Fallback)."""
+    limit = request.args.get('limit', 20, type=int)
+    after_id = request.args.get('after_id', 0, type=int)
+    query = Car.query
+    if after_id:
+        query = query.filter(Car.id > after_id)
+    cars = query.order_by(Car.first_seen.desc()).limit(limit).all()
+    return jsonify([c.to_dict() for c in cars])
+
+
+@app.route('/api/scraper-status')
+def api_scraper_status():
+    """Live-Scraper Status."""
+    from services.live_scraper import get_scraper_status
+    return jsonify(get_scraper_status())
+
+
+@app.route('/search')
+def search():
+    """Suche durchführen und Ergebnisse anzeigen."""
+    from services.search_service import search_cars
+
+    brand = request.args.get('brand', '').strip()
+    model = request.args.get('model', '').strip()
+    price_min = request.args.get('price_min', type=int)
+    price_max = request.args.get('price_max', type=int)
+    year_min = request.args.get('year_min', type=int)
+    mileage_max = request.args.get('mileage_max', type=int)
+    fuel_type = request.args.get('fuel_type', '').strip()
+    sort_by = request.args.get('sort', 'price_asc')
+
+    platforms = request.args.getlist('platforms')
+    if not platforms:
+        platforms = ['mobile_de', 'autoscout24', 'kleinanzeigen']
+
+    results = search_cars(
+        brand=brand or None, model=model or None,
+        price_min=price_min, price_max=price_max,
+        year_min=year_min, mileage_max=mileage_max,
+        fuel_type=fuel_type or None, platforms=platforms
+    )
+
+    if sort_by == 'price_asc':
+        results.sort(key=lambda c: c.price or float('inf'))
+    elif sort_by == 'price_desc':
+        results.sort(key=lambda c: c.price or 0, reverse=True)
+    elif sort_by == 'year_desc':
+        results.sort(key=lambda c: c.year or 0, reverse=True)
+    elif sort_by == 'mileage_asc':
+        results.sort(key=lambda c: c.mileage or float('inf'))
+
+    return render_template('results.html', cars=results, search_params=request.args)
+
+
+@app.route('/car/<int:car_id>')
+def car_detail(car_id):
+    """Fahrzeug-Detailansicht mit allen Bildern."""
+    from services.price_tracker import get_car_detail
+    car = get_car_detail(car_id)
+    if not car:
+        flash('Fahrzeug nicht gefunden.', 'error')
+        return redirect(url_for('index'))
+    return render_template('detail.html', car=car)
+
+
+@app.route('/track/<int:car_id>', methods=['POST'])
+def track(car_id):
+    """Fahrzeug tracken/untracken."""
+    from services.price_tracker import track_car, untrack_car
+    action = request.form.get('action', 'track')
+    if action == 'untrack':
+        untrack_car(car_id)
+        flash('Tracking entfernt.', 'info')
+    else:
+        track_car(car_id)
+        flash('Fahrzeug wird jetzt getrackt!', 'success')
+    return redirect(request.referrer or url_for('tracked'))
+
+
+@app.route('/tracked')
+def tracked():
+    """Getrackte Fahrzeuge anzeigen."""
+    from services.price_tracker import get_tracked_cars
+    cars = get_tracked_cars()
+    return render_template('tracked.html', cars=cars)
+
+
+@app.route('/alerts')
+def alerts():
+    """Alert-Verwaltung."""
+    from services.notification import get_alerts
+    alert_list = get_alerts()
+    return render_template('alerts.html', alerts=alert_list)
+
+
+@app.route('/alerts/create', methods=['POST'])
+def create_alert():
+    """Neuen Alert erstellen."""
+    from services.notification import create_alert as _create_alert
+    email = request.form.get('email', '').strip()
+    if not email:
+        flash('Bitte E-Mail-Adresse angeben.', 'error')
+        return redirect(url_for('alerts'))
+    _create_alert(
+        brand=request.form.get('brand', '').strip() or None,
+        model=request.form.get('model', '').strip() or None,
+        min_price=request.form.get('min_price', type=int),
+        max_price=request.form.get('max_price', type=int),
+        min_year=request.form.get('min_year', type=int),
+        max_mileage=request.form.get('max_mileage', type=int),
+        fuel_type=request.form.get('fuel_type', '').strip() or None,
+        email=email
+    )
+    flash('Alert erstellt! Du wirst bei neuen Ergebnissen benachrichtigt.', 'success')
+    return redirect(url_for('alerts'))
+
+
+@app.route('/alerts/toggle/<int:alert_id>', methods=['POST'])
+def toggle_alert(alert_id):
+    from services.notification import toggle_alert as _toggle
+    _toggle(alert_id)
+    return redirect(url_for('alerts'))
+
+
+@app.route('/alerts/delete/<int:alert_id>', methods=['POST'])
+def delete_alert(alert_id):
+    from services.notification import delete_alert as _delete
+    _delete(alert_id)
+    flash('Alert gelöscht.', 'info')
+    return redirect(url_for('alerts'))
+
+
+@app.route('/api/price-history/<int:car_id>')
+def api_price_history(car_id):
+    from models import PriceHistory
+    history = PriceHistory.query.filter_by(car_id=car_id).order_by(PriceHistory.recorded_at).all()
+    return jsonify([
+        {'price': h.price, 'date': h.recorded_at.strftime('%d.%m.%Y %H:%M')}
+        for h in history
+    ])
+
+
+# --- MARKTANALYSE NEU (DB-basiert, Schwarz-Weiß UI) ---
+@app.route('/marktanalyse')
+def marktanalyse():
+    """Neue Marktanalyse-Seite: Daten aus DB, elegant schwarz-weiß."""
+    from services.playwright_scraper import CAR_DATA
+    from services.background_scraper import get_bg_status
+    return render_template('marktanalyse.html',
+                           car_data=CAR_DATA,
+                           car_brands=sorted(CAR_DATA.keys()),
+                           bg_status=get_bg_status())
+
+
+@app.route('/api/markt-stats')
+def api_markt_stats():
+    """Marktstatistiken aus der DB mit Filtern."""
+    import statistics as stats_mod
+    from sqlalchemy import func
+
+    brand = request.args.get('brand', '').strip()
+    model = request.args.get('model', '').strip()
+    year_from = request.args.get('year_from', type=int)
+    year_to = request.args.get('year_to', type=int)
+    km_max = request.args.get('km_max', type=int)
+
+    query = Car.query.filter(Car.price.isnot(None), Car.price >= 500, Car.price <= 500000)
+
+    if brand:
+        query = query.filter(func.lower(Car.brand) == brand.lower())
+    if model:
+        query = query.filter(func.lower(Car.model) == model.lower())
+    if year_from:
+        query = query.filter(Car.year >= year_from)
+    if year_to:
+        query = query.filter(Car.year <= year_to)
+    if km_max:
+        query = query.filter(Car.mileage <= km_max)
+
+    cars = query.order_by(Car.price.asc()).all()
+
+    if not cars:
+        return jsonify({'count': 0, 'stats': None, 'listings': [], 'by_platform': {}, 'price_ranges': {}})
+
+    prices = [c.price for c in cars if c.price]
+    if not prices:
+        return jsonify({'count': 0, 'stats': None, 'listings': [], 'by_platform': {}, 'price_ranges': {}})
+
+    n = len(prices)
+    q1 = prices[n // 4] if n > 3 else prices[0]
+    q3 = prices[(3 * n) // 4] if n > 3 else prices[-1]
+
+    analysis = {
+        'count': n,
+        'avg': round(stats_mod.mean(prices)),
+        'median': round(stats_mod.median(prices)),
+        'min': min(prices),
+        'max': max(prices),
+        'std_dev': round(stats_mod.stdev(prices)) if n > 1 else 0,
+        'q1': q1,
+        'q3': q3,
+    }
+
+    # Nach Plattform
+    by_platform = {}
+    for c in cars:
+        p = c.platform or 'unknown'
+        if p not in by_platform:
+            by_platform[p] = {'count': 0, 'prices': []}
+        by_platform[p]['count'] += 1
+        by_platform[p]['prices'].append(c.price)
+    for p in by_platform:
+        pp = by_platform[p]['prices']
+        by_platform[p]['avg'] = round(stats_mod.mean(pp))
+        by_platform[p]['min'] = min(pp)
+        by_platform[p]['max'] = max(pp)
+        del by_platform[p]['prices']
+
+    # Preisbereiche
+    price_ranges = {}
+    step = max(1000, (max(prices) - min(prices)) // 8) if max(prices) > min(prices) else 5000
+    rs = (min(prices) // 1000) * 1000
+    while rs <= max(prices):
+        re_ = rs + step
+        label = f"{rs:,} - {re_:,} €".replace(",", ".")
+        cnt = len([p for p in prices if rs <= p < re_])
+        if cnt > 0:
+            price_ranges[label] = cnt
+        rs = re_
+
+    # Top Listings (günstigste + teuerste)
+    listings = []
+    for c in cars[:10]:  # günstigste 10
+        listings.append(c.to_dict())
+    for c in cars[-5:]:  # teuerste 5
+        d = c.to_dict()
+        if d not in listings:
+            listings.append(d)
+
+    return jsonify({
+        'count': n,
+        'stats': analysis,
+        'listings': listings,
+        'by_platform': by_platform,
+        'price_ranges': price_ranges,
+    })
+
+
+@app.route('/api/bg-scrape', methods=['POST'])
+def api_bg_scrape():
+    """Manuell einen Background-Scrape auslösen."""
+    import threading
+    from services.background_scraper import run_background_scrape, bg_status
+
+    if bg_status.get('running'):
+        return jsonify({'status': 'already_running'})
+
+    brands = request.json.get('brands') if request.json else None
+    thread = threading.Thread(target=run_background_scrape, args=(app, brands), daemon=True)
+    thread.start()
+    return jsonify({'status': 'started'})
+
+
+@app.route('/api/bg-status')
+def api_bg_status():
+    """Status des Background-Scrapers."""
+    from services.background_scraper import get_bg_status
+    return jsonify(get_bg_status())
+
+
+# --- LEGACY: Live-Analyse (Playwright direkt) ---
+@app.route('/market-live')
+def market_live():
+    """Live-Marktanalyse mit Playwright Headless-Browser."""
+    from services.playwright_scraper import CAR_DATA
+    return render_template('market_live.html', car_data=CAR_DATA, car_brands=sorted(CAR_DATA.keys()))
+
+
+@app.route('/api/live-search', methods=['POST'])
+def api_live_search():
+    """API-Endpoint für Playwright Live-Suche."""
+    from services.playwright_scraper import run_live_search
+    data = request.json
+    brand = data.get('brand', '')
+    if not brand:
+        return jsonify({'error': 'Bitte Marke angeben'}), 400
+
+    results, analysis = run_live_search(
+        brand=brand,
+        model=data.get('model') or None,
+        year_from=data.get('year_from'),
+        year_to=data.get('year_to'),
+        km_to=data.get('km_to'),
+        sources=data.get('sources', ['autoscout24', 'kleinanzeigen']),
+    )
+
+    return jsonify({
+        'results': results,
+        'analysis': analysis,
+        'count': len(results),
+        'query': {'brand': brand, 'model': data.get('model', '')}
+    })
+
+
+# --- MARKTANALYSE ---
+@app.route('/market')
+def market():
+    """Marktanalyse: Preistrend für eine Marke/Modell oder Gesamtmarkt."""
+    from services.market_service import get_market_data, get_market_stats, get_full_market_overview
+
+    brand = request.args.get('brand', '').strip()
+    model = request.args.get('model', '').strip()
+    fuel_type = request.args.get('fuel_type', '').strip()
+    days = request.args.get('days', 90, type=int)
+
+    market_data = []
+    stats = None
+    overview = None
+
+    if brand or model:
+        # Gefilterte Analyse für eine bestimmte Marke/Modell
+        market_data = get_market_data(brand=brand or None, model=model or None,
+                                      fuel_type=fuel_type or None, days=days)
+        stats = get_market_stats(brand=brand or None, model=model or None,
+                                 fuel_type=fuel_type or None, days=days)
+    else:
+        # Gesamtmarkt-Übersicht (kein Filter)
+        overview = get_full_market_overview(days=days)
+
+    return render_template('market.html',
+                           market_data=market_data, stats=stats, overview=overview,
+                           brand=brand, model=model, fuel_type=fuel_type, days=days)
+
+
+@app.route('/api/market-data')
+def api_market_data():
+    """Marktdaten als JSON für dynamisches Nachladen."""
+    from services.market_service import get_market_data
+    data = get_market_data(
+        brand=request.args.get('brand') or None,
+        model=request.args.get('model') or None,
+        fuel_type=request.args.get('fuel_type') or None,
+        days=request.args.get('days', 90, type=int)
+    )
+    return jsonify(data)
+
+
+# --- SCHEDULER & LIVE SCRAPER ---
+def start_scheduler():
+    from services.notification import check_alerts
+    from services.background_scraper import start_background_scheduler
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        func=lambda: check_alerts(mail, app),
+        trigger='interval',
+        minutes=app.config.get('ALERT_CHECK_INTERVAL', 30),
+        id='alert_checker',
+        replace_existing=True
+    )
+    # Background-Scraper: alle 2 Stunden AutoScout24 + Kleinanzeigen
+    start_background_scheduler(app, scheduler)
+    scheduler.start()
+    logger.info(f"Scheduler gestartet (Alerts alle {app.config.get('ALERT_CHECK_INTERVAL', 30)} Min, BG-Scraper alle 2h)")
+
+
+# Scheduler und Background-Scraper beim Import starten (für gunicorn)
+start_scheduler()
+
+if app.config.get('LIVE_SCRAPE_ENABLED', True):
+    from services.live_scraper import start_live_scraper
+    start_live_scraper(app)
+
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000, use_reloader=False, threaded=True)

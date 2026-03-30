@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block title %}Marktanalyse — AutoScraper{% endblock %}
+
+{% block hero %}
+<section style="background:#000;color:#fff;padding:3.5rem 0 2.5rem;text-align:center;">
+    <h1 style="font-family:'DM Serif Display',serif;font-size:2.6rem;margin:0 0 .5rem;">Marktanalyse</h1>
+    <p style="font-family:Inter,sans-serif;font-weight:300;color:#999;font-size:1.05rem;margin:0;">
+        Daten aus AutoScout24 &amp; Kleinanzeigen &mdash; automatisch gesammelt
+    </p>
+</section>
+{% endblock %}
+
+{% block content %}
+<style>
+    .ma-wrap{max-width:1100px;margin:0 auto;padding:2rem 1rem;}
+    /* Filter */
+    .ma-filters{background:#fafafa;border:1px solid #e0e0e0;border-radius:8px;padding:1.5rem;margin-bottom:2rem;}
+    .ma-filters label{font-family:Inter,sans-serif;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#555;display:block;margin-bottom:.3rem;}
+    .ma-filters select,.ma-filters input{width:100%;padding:.55rem .7rem;border:1px solid #ccc;border-radius:5px;font-size:.95rem;font-family:Inter,sans-serif;background:#fff;color:#111;transition:border-color .2s;}
+    .ma-filters select:focus,.ma-filters input:focus{outline:none;border-color:#111;}
+    .ma-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;align-items:end;}
+    .ma-btn{background:#111;color:#fff;border:none;padding:.6rem 2rem;border-radius:5px;font-size:.95rem;font-family:Inter,sans-serif;font-weight:500;cursor:pointer;transition:background .2s;}
+    .ma-btn:hover{background:#333;}
+    .ma-btn:disabled{background:#999;cursor:not-allowed;}
+    .ma-btn-outline{background:#fff;color:#111;border:1.5px solid #111;}
+    .ma-btn-outline:hover{background:#111;color:#fff;}
+    /* Status Bar */
+    .ma-status{display:flex;align-items:center;gap:1rem;padding:.8rem 1rem;background:#f5f5f5;border-radius:6px;margin-bottom:1.5rem;font-size:.85rem;color:#666;font-family:Inter,sans-serif;}
+    .ma-status .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .dot-green{background:#22c55e;}
+    .dot-yellow{background:#eab308;animation:pulse 1.5s infinite;}
+    .dot-gray{background:#999;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+    /* KPIs */
+    .ma-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:2rem;}
+    .ma-kpi{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:1.2rem;text-align:center;}
+    .ma-kpi .num{font-family:'DM Serif Display',serif;font-size:1.8rem;color:#111;line-height:1.2;}
+    .ma-kpi .lbl{font-family:Inter,sans-serif;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-top:.3rem;}
+    /* Charts */
+    .ma-charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
+    @media(max-width:768px){.ma-charts{grid-template-columns:1fr;}}
+    .ma-chart-card{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:1.2rem;}
+    .ma-chart-card h3{font-family:Inter,sans-serif;font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#555;margin:0 0 1rem;}
+    /* Table */
+    .ma-table-wrap{overflow-x:auto;margin-bottom:2rem;}
+    .ma-table{width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:.9rem;}
+    .ma-table th{background:#111;color:#fff;padding:.7rem .8rem;text-align:left;font-weight:500;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;}
+    .ma-table td{padding:.65rem .8rem;border-bottom:1px solid #eee;color:#333;}
+    .ma-table tr:hover td{background:#f9f9f9;}
+    .tag{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:.75rem;font-weight:600;}
+    .tag-cheap{background:#dcfce7;color:#166534;}
+    .tag-fair{background:#f0f0f0;color:#555;}
+    .tag-exp{background:#fce4ec;color:#b71c1c;}
+    /* Loading */
+    .ma-loading{text-align:center;padding:3rem 0;display:none;}
+    .ma-spinner{width:36px;height:36px;border:3px solid #ddd;border-top-color:#111;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .ma-empty{text-align:center;padding:3rem 0;color:#999;font-family:Inter,sans-serif;}
+</style>
+
+<div class="ma-wrap">
+    <!-- Status -->
+    <div class="ma-status" id="bgStatus">
+        <span class="dot {{ 'dot-green' if bg_status.last_run else 'dot-gray' }}" id="statusDot"></span>
+        <span id="statusText">
+            {% if bg_status.last_run %}
+                Letzte Datensammlung: {{ bg_status.last_run }}
+                ({{ bg_status.last_results.autoscout24 }} AS24, {{ bg_status.last_results.kleinanzeigen }} KA)
+            {% else %}
+                Noch keine Datensammlung durchgeführt
+            {% endif %}
+        </span>
+        <button class="ma-btn ma-btn-outline" style="margin-left:auto;padding:.4rem 1rem;font-size:.8rem;" onclick="triggerScrape()" id="scrapeBtn">
+            Jetzt sammeln
+        </button>
+    </div>
+
+    <!-- Filter -->
+    <div class="ma-filters">
+        <div class="ma-row">
+            <div>
+                <label>Marke</label>
+                <select id="fBrand" onchange="updateModels()">
+                    <option value="">Alle Marken</option>
+                    {% for b in car_brands %}
+                    <option value="{{ b }}">{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Modell</label>
+                <select id="fModel">
+                    <option value="">Alle Modelle</option>
+                </select>
+            </div>
+            <div>
+                <label>Baujahr von</label>
+                <input type="number" id="fYearFrom" placeholder="z.B. 2018" min="1990" max="2026">
+            </div>
+            <div>
+                <label>Baujahr bis</label>
+                <input type="number" id="fYearTo" placeholder="z.B. 2024" min="1990" max="2026">
+            </div>
+            <div>
+                <label>Max. Kilometer</label>
+                <input type="number" id="fKmMax" placeholder="z.B. 150000" step="10000">
+            </div>
+            <div>
+                <button class="ma-btn" onclick="loadStats()" id="analyzeBtn">Analysieren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="ma-loading" id="loading">
+        <div class="ma-spinner"></div>
+        <p style="color:#666;font-family:Inter,sans-serif;">Daten werden analysiert...</p>
+    </div>
+
+    <!-- Results Container -->
+    <div id="results" style="display:none;">
+        <!-- KPIs -->
+        <div class="ma-kpis" id="kpis"></div>
+
+        <!-- Charts -->
+        <div class="ma-charts">
+            <div class="ma-chart-card">
+                <h3>Preisverteilung</h3>
+                <canvas id="chartPrices" height="220"></canvas>
+            </div>
+            <div class="ma-chart-card">
+                <h3>Nach Plattform</h3>
+                <canvas id="chartPlatform" height="220"></canvas>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="ma-chart-card" style="margin-bottom:2rem;">
+            <h3>Angebote</h3>
+            <div class="ma-table-wrap">
+                <table class="ma-table" id="listingsTable">
+                    <thead>
+                        <tr>
+                            <th>Fahrzeug</th>
+                            <th>Preis</th>
+                            <th>Kilometer</th>
+                            <th>Baujahr</th>
+                            <th>Plattform</th>
+                            <th>Bewertung</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listingsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="ma-empty" id="emptyState">
+        <p style="font-size:1.3rem;margin-bottom:.5rem;">Keine Daten vorhanden</p>
+        <p>Klicke auf <strong>„Jetzt sammeln"</strong> um Daten von AutoScout24 und Kleinanzeigen zu laden,<br>
+        oder wähle Filter und klicke <strong>„Analysieren"</strong>.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CAR_DATA = {{ car_data | tojson }};
+let priceChart = null, platformChart = null;
+
+function updateModels() {
+    const brand = document.getElementById('fBrand').value;
+    const sel = document.getElementById('fModel');
+    sel.innerHTML = '<option value="">Alle Modelle</option>';
+    if (brand && CAR_DATA[brand]) {
+        CAR_DATA[brand].forEach(m => {
+            sel.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+    }
+}
+
+function fmt(n) {
+    return n ? n.toLocaleString('de-DE') + ' €' : '–';
+}
+
+function fmtKm(n) {
+    return n ? n.toLocaleString('de-DE') + ' km' : '–';
+}
+
+async function loadStats() {
+    const params = new URLSearchParams();
+    const brand = document.getElementById('fBrand').value;
+    const model = document.getElementById('fModel').value;
+    const yf = document.getElementById('fYearFrom').value;
+    const yt = document.getElementById('fYearTo').value;
+    const km = document.getElementById('fKmMax').value;
+
+    if (brand) params.set('brand', brand);
+    if (model) params.set('model', model);
+    if (yf) params.set('year_from', yf);
+    if (yt) params.set('year_to', yt);
+    if (km) params.set('km_max', km);
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('analyzeBtn').disabled = true;
+
+    try {
+        const resp = await fetch('/api/markt-stats?' + params.toString());
+        const data = await resp.json();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('analyzeBtn').disabled = false;
+
+        if (!data.stats || data.count === 0) {
+            document.getElementById('emptyState').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('results').style.display = 'block';
+        renderKPIs(data.stats);
+        renderPriceChart(data.price_ranges);
+        renderPlatformChart(data.by_platform);
+        renderListings(data.listings, data.stats);
+
+    } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('analyzeBtn').disabled = false;
+        document.getElementById('emptyState').style.display = 'block';
+        console.error(err);
+    }
+}
+
+function renderKPIs(s) {
+    document.getElementById('kpis').innerHTML = `
+        <div class="ma-kpi"><div class="num">${s.count}</div><div class="lbl">Angebote</div></div>
+        <div class="ma-kpi"><div class="num">${fmt(s.avg)}</div><div class="lbl">Durchschnitt</div></div>
+        <div class="ma-kpi"><div class="num">${fmt(s.median)}</div><div class="lbl">Median</div></div>
+        <div class="ma-kpi"><div class="num">${fmt(s.min)}</div><div class="lbl">Minimum</div></div>
+        <div class="ma-kpi"><div class="num">${fmt(s.max)}</div><div class="lbl">Maximum</div></div>
+        <div class="ma-kpi"><div class="num">${fmt(s.std_dev)}</div><div class="lbl">Std. Abweichung</div></div>
+    `;
+}
+
+function renderPriceChart(ranges) {
+    const ctx = document.getElementById('chartPrices').getContext('2d');
+    if (priceChart) priceChart.destroy();
+    priceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                data: Object.values(ranges),
+                backgroundColor: '#111',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { font: { size: 10, family: 'Inter' }, maxRotation: 45 }, grid: { display: false } },
+                y: { ticks: { font: { size: 11, family: 'Inter' } }, grid: { color: '#eee' } }
+            }
+        }
+    });
+}
+
+function renderPlatformChart(platforms) {
+    const ctx = document.getElementById('chartPlatform').getContext('2d');
+    if (platformChart) platformChart.destroy();
+    const labels = Object.keys(platforms).map(k => k === 'autoscout24' ? 'AutoScout24' : k === 'kleinanzeigen' ? 'Kleinanzeigen' : k);
+    const counts = Object.values(platforms).map(v => v.count);
+    platformChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: counts,
+                backgroundColor: ['#111', '#666', '#bbb', '#ddd'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 12 }, padding: 16 } }
+            }
+        }
+    });
+}
+
+function renderListings(listings, stats) {
+    const tbody = document.getElementById('listingsBody');
+    tbody.innerHTML = '';
+    listings.forEach(c => {
+        let tag = '<span class="tag tag-fair">Fair</span>';
+        if (c.price && stats.avg) {
+            if (c.price < stats.avg * 0.8) tag = '<span class="tag tag-cheap">Günstig</span>';
+            else if (c.price > stats.avg * 1.2) tag = '<span class="tag tag-exp">Teuer</span>';
+        }
+        const pName = c.platform === 'autoscout24' ? 'AutoScout24' : c.platform === 'kleinanzeigen' ? 'Kleinanzeigen' : c.platform;
+        tbody.innerHTML += `<tr>
+            <td>${c.title || '–'}</td>
+            <td><strong>${fmt(c.price)}</strong></td>
+            <td>${fmtKm(c.mileage)}</td>
+            <td>${c.year || '–'}</td>
+            <td>${pName}</td>
+            <td>${tag}</td>
+        </tr>`;
+    });
+}
+
+async function triggerScrape() {
+    const btn = document.getElementById('scrapeBtn');
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+
+    btn.disabled = true;
+    btn.textContent = 'Läuft...';
+    dot.className = 'dot dot-yellow';
+    txt.textContent = 'Datensammlung läuft... (kann einige Minuten dauern)';
+
+    try {
+        await fetch('/api/bg-scrape', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' });
+        // Poll status
+        const poll = setInterval(async () => {
+            const r = await fetch('/api/bg-status');
+            const s = await r.json();
+            if (!s.running) {
+                clearInterval(poll);
+                dot.className = 'dot dot-green';
+                txt.textContent = `Letzte Sammlung: ${s.last_run || 'Gerade eben'} (${s.last_results.autoscout24} AS24, ${s.last_results.kleinanzeigen} KA)`;
+                btn.disabled = false;
+                btn.textContent = 'Jetzt sammeln';
+            }
+        }, 5000);
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Jetzt sammeln';
+        dot.className = 'dot dot-gray';
+        txt.textContent = 'Fehler beim Starten';
+    }
+}
+</script>
+{% endblock %}

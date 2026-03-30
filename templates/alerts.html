@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Alerts — AutoScraper{% endblock %}
+
+{% block content %}
+<section class="section-spacing">
+    <div class="section-header">
+        <p class="section-label">Benachrichtigungen</p>
+        <h2 class="section-title">Such-Alerts</h2>
+    </div>
+
+    <div class="alerts-grid">
+        <!-- Neuen Alert erstellen -->
+        <div>
+            <div class="detail-info-card">
+                <p class="section-label" style="margin-bottom: var(--spacing-md);">Neuen Alert erstellen</p>
+                <form action="{{ url_for('create_alert') }}" method="POST">
+                    <div class="sahara-form-group">
+                        <label class="sahara-label">E-Mail *</label>
+                        <input type="email" name="email" class="sahara-input" required placeholder="deine@email.de">
+                    </div>
+                    <div class="sahara-form-group">
+                        <label class="sahara-label">Marke</label>
+                        <select name="brand" class="sahara-select">
+                            <option value="">Alle Marken</option>
+                            <option>Audi</option>
+                            <option>BMW</option>
+                            <option>Mercedes-Benz</option>
+                            <option>Volkswagen</option>
+                            <option>Opel</option>
+                            <option>Ford</option>
+                            <option>Porsche</option>
+                            <option>Toyota</option>
+                            <option>Tesla</option>
+                            <option>Hyundai</option>
+                            <option>Kia</option>
+                            <option>Skoda</option>
+                            <option>Seat</option>
+                            <option>Renault</option>
+                            <option>Volvo</option>
+                        </select>
+                    </div>
+                    <div class="sahara-form-group">
+                        <label class="sahara-label">Modell</label>
+                        <input type="text" name="model" class="sahara-input" placeholder="z.B. A4, Golf...">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);">
+                        <div class="sahara-form-group">
+                            <label class="sahara-label">Max. Preis</label>
+                            <input type="number" name="max_price" class="sahara-input" placeholder="z.B. 25000">
+                        </div>
+                        <div class="sahara-form-group">
+                            <label class="sahara-label">Baujahr ab</label>
+                            <input type="number" name="min_year" class="sahara-input" placeholder="z.B. 2020">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);">
+                        <div class="sahara-form-group">
+                            <label class="sahara-label">Max. km</label>
+                            <input type="number" name="max_mileage" class="sahara-input" placeholder="z.B. 100000">
+                        </div>
+                        <div class="sahara-form-group">
+                            <label class="sahara-label">Kraftstoff</label>
+                            <select name="fuel_type" class="sahara-select">
+                                <option value="">Alle</option>
+                                <option value="benzin">Benzin</option>
+                                <option value="diesel">Diesel</option>
+                                <option value="elektro">Elektro</option>
+                                <option value="hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-sahara" style="width:100%; margin-top:var(--spacing-sm);">
+                        ALERT ERSTELLEN
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bestehende Alerts -->
+        <div>
+            <div class="detail-info-card">
+                <p class="section-label" style="margin-bottom: var(--spacing-md);">Aktive Alerts ({{ alerts|length }})</p>
+                {% if alerts %}
+                {% for alert in alerts %}
+                <div class="alert-item">
+                    <div>
+                        <div class="alert-info-title">
+                            {{ alert.brand or 'Alle Marken' }} {{ alert.model or '' }}
+                            {% if not alert.is_active %}
+                            <span class="badge-paused">Pausiert</span>
+                            {% endif %}
+                        </div>
+                        <div class="alert-info-meta">
+                            {% if alert.max_price %}bis {{ "{:,.0f}".format(alert.max_price).replace(",", ".") }}&euro; &middot; {% endif %}
+                            {% if alert.min_year %}ab {{ alert.min_year }} &middot; {% endif %}
+                            {% if alert.max_mileage %}max {{ "{:,.0f}".format(alert.max_mileage).replace(",", ".") }} km &middot; {% endif %}
+                            {% if alert.fuel_type %}{{ alert.fuel_type }} &middot; {% endif %}
+                            {{ alert.email }}
+                        </div>
+                    </div>
+                    <div class="alert-actions-btns">
+                        <form action="{{ url_for('toggle_alert', alert_id=alert.id) }}" method="POST">
+                            <button type="submit" class="btn-sahara-outline btn-sahara-sm" title="{{ 'Pausieren' if alert.is_active else 'Aktivieren' }}">
+                                <i class="bi bi-{{ 'pause' if alert.is_active else 'play' }}"></i>
+                            </button>
+                        </form>
+                        <form action="{{ url_for('delete_alert', alert_id=alert.id) }}" method="POST"
+                              onsubmit="return confirm('Alert wirklich l\u00f6schen?')">
+                            <button type="submit" class="btn-sahara btn-sahara-sm btn-sahara-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state" style="padding: var(--spacing-xl) 0;">
+                    <div class="empty-state-icon" style="font-size:2.5rem;"><i class="bi bi-bell-slash"></i></div>
+                    <p>Noch keine Alerts erstellt</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

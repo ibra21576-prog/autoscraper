@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}Marktanalyse — AutoScraper{% endblock %}
+
+{% block content %}
+<section class="section-spacing">
+    <div class="section-header">
+        <p class="section-label">Preisanalyse</p>
+        <h2 class="section-title">
+            {% if brand or model %}
+                {{ brand }} {{ model }} &mdash; Markt
+            {% else %}
+                Gesamtmarkt Deutschland
+            {% endif %}
+        </h2>
+        <p style="color: var(--color-taupe); max-width: 520px; margin: 0 auto;">
+            {% if brand or model %}
+                Tiefst-, Durchschnitts- und H&ouml;chstpreis pro Tag f&uuml;r {{ brand }} {{ model }}.
+            {% else %}
+                &Uuml;bersicht des gesamten deutschen Gebrauchtwagenmarkts &mdash; Preise, Marken, Kraftstoffarten und mehr.
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Suchformular -->
+    <div class="search-card" style="margin-bottom: var(--spacing-xl);">
+        <form action="{{ url_for('market') }}" method="GET" id="searchForm">
+            <div class="search-grid">
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Marke</label>
+                    <select name="brand" class="sahara-select">
+                        <option value="">Gesamtmarkt (alle Marken)</option>
+                        {% for b in ['Audi','BMW','Mercedes-Benz','Volkswagen','Opel','Ford',
+                                     'Porsche','Toyota','Tesla','Hyundai','Kia','Skoda',
+                                     'Seat','Renault','Volvo','Dacia','Mini','Fiat',
+                                     'Cupra','Alfa Romeo','Land Rover','Peugeot','Citroen'] %}
+                        <option {% if brand == b %}selected{% endif %}>{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Modell</label>
+                    <input type="text" name="model" class="sahara-input" value="{{ model }}"
+                           placeholder="z.B. A4, Golf, 3er&hellip; (optional)">
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Kraftstoff</label>
+                    <select name="fuel_type" class="sahara-select">
+                        <option value="" {% if not fuel_type %}selected{% endif %}>Alle</option>
+                        <option value="Benzin"  {% if fuel_type == 'Benzin'  %}selected{% endif %}>Benzin</option>
+                        <option value="Diesel"  {% if fuel_type == 'Diesel'  %}selected{% endif %}>Diesel</option>
+                        <option value="Elektro" {% if fuel_type == 'Elektro' %}selected{% endif %}>Elektro</option>
+                        <option value="Hybrid"  {% if fuel_type == 'Hybrid'  %}selected{% endif %}>Hybrid</option>
+                    </select>
+                </div>
+
+                <div class="sahara-form-group">
+                    <label class="sahara-label">Zeitraum</label>
+                    <select name="days" class="sahara-select">
+                        <option value="30"  {% if days == 30  %}selected{% endif %}>Letzte 30 Tage</option>
+                        <option value="60"  {% if days == 60  %}selected{% endif %}>Letzte 60 Tage</option>
+                        <option value="90"  {% if days == 90  %}selected{% endif %}>Letzte 90 Tage</option>
+                        <option value="180" {% if days == 180 %}selected{% endif %}>Letzte 6 Monate</option>
+                        <option value="365" {% if days == 365 %}selected{% endif %}>Letztes Jahr</option>
+                    </select>
+                </div>
+
+                <div class="sahara-form-group full-width">
+                    <button type="submit" class="btn-sahara" style="width:100%;" id="searchBtn">
+                        MARKT ANALYSIEREN
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {# ================================================================ #}
+    {# GESAMTMARKT-UEBERSICHT (kein Brand/Modell-Filter)                 #}
+    {# ================================================================ #}
+    {% if overview %}
+
+    {% if overview.total_count == 0 %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="bi bi-graph-up"></i></div>
+        <h3>Noch keine Daten vorhanden</h3>
+        <p>Starte den Live-Feed, damit Preisdaten gesammelt werden. Je mehr Daten, desto genauer die Analyse.</p>
+        <a href="{{ url_for('live_feed') }}" class="btn-sahara">Live Feed starten</a>
+    </div>
+    {% else %}
+
+    <!-- Gesamt-KPIs -->
+    <div class="kpi-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:var(--spacing-md); margin-bottom:var(--spacing-xl);">
+        <div class="detail-info-card text-center">
+            <p class="section-label">Inserate gesamt</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem;">
+                {{ "{:,.0f}".format(overview.total_count).replace(",",".") }}
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">letzte {{ overview.days }} Tage</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Durchschnittspreis</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem;">
+                {{ "{:,.0f}".format(overview.avg_price).replace(",",".") }} &euro;
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">alle Fahrzeuge</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">G&uuml;nstigstes</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem; color:var(--color-success);">
+                {{ "{:,.0f}".format(overview.min_price).replace(",",".") }} &euro;
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">im Zeitraum</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Teuerstes</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem; color:var(--color-danger);">
+                {{ "{:,.0f}".format(overview.max_price).replace(",",".") }} &euro;
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">im Zeitraum</p>
+        </div>
+    </div>
+
+    {% if overview.daily_data %}
+    <!-- Gesamtmarkt-Preis-Chart -->
+    <div class="chart-container" style="margin-bottom:var(--spacing-md); padding:var(--spacing-lg);">
+        <p class="section-label" style="margin-bottom:var(--spacing-md);">
+            Gesamtmarkt-Preisentwicklung ({{ overview.days }} Tage)
+        </p>
+        <canvas id="marketChart" height="300"></canvas>
+    </div>
+
+    <!-- Volumen-Chart -->
+    <div class="chart-container" style="margin-bottom:var(--spacing-xl); padding:var(--spacing-lg);">
+        <p class="section-label" style="margin-bottom:var(--spacing-md);">Neue Inserate pro Tag</p>
+        <canvas id="volumeChart" height="140"></canvas>
+    </div>
+    {% endif %}
+
+    <!-- Top-Marken + Kraftstoff -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md); margin-bottom:var(--spacing-xl);">
+        {% if overview.top_brands %}
+        <div class="chart-container" style="padding:var(--spacing-lg);">
+            <p class="section-label" style="margin-bottom:var(--spacing-md);">Top-Marken nach Inseraten</p>
+            <canvas id="brandChart" height="300"></canvas>
+        </div>
+        {% endif %}
+        {% if overview.fuel_distribution %}
+        <div class="chart-container" style="padding:var(--spacing-lg);">
+            <p class="section-label" style="margin-bottom:var(--spacing-md);">Kraftstoffverteilung</p>
+            <canvas id="fuelChart" height="300"></canvas>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Preissegmente + Plattformen -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md); margin-bottom:var(--spacing-xl);">
+        {% if overview.segment_data %}
+        <div class="chart-container" style="padding:var(--spacing-lg);">
+            <p class="section-label" style="margin-bottom:var(--spacing-md);">Preissegmente</p>
+            <canvas id="segmentChart" height="260"></canvas>
+        </div>
+        {% endif %}
+        {% if overview.platform_distribution %}
+        <div class="chart-container" style="padding:var(--spacing-lg);">
+            <p class="section-label" style="margin-bottom:var(--spacing-md);">Inserate nach Plattform</p>
+            <canvas id="platformChart" height="260"></canvas>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Top-Marken Tabelle -->
+    {% if overview.top_brands %}
+    <div class="detail-info-card" style="margin-bottom:var(--spacing-xl);">
+        <p class="section-label" style="margin-bottom:var(--spacing-md);">Top-Marken im Detail</p>
+        <table class="detail-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Marke</th>
+                    <th style="text-align:right;">Inserate</th>
+                    <th style="text-align:right;">Durchschnittspreis</th>
+                    <th style="text-align:right;">&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in overview.top_brands %}
+                <tr>
+                    <td><strong>{{ b.brand }}</strong></td>
+                    <td style="text-align:right;">{{ "{:,.0f}".format(b.count).replace(",",".") }}</td>
+                    <td style="text-align:right;">{{ "{:,.0f}".format(b.avg_price).replace(",",".") }} &euro;</td>
+                    <td style="text-align:right;">
+                        <a href="{{ url_for('market', brand=b.brand, days=days) }}"
+                           class="btn-sahara btn-sahara-sm">Analysieren</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% endif %}{# end total_count > 0 #}
+
+    {# ================================================================ #}
+    {# GEFILTERTE ANALYSE (Brand oder Modell angegeben)                  #}
+    {# ================================================================ #}
+    {% elif brand or model %}
+
+    {% if not market_data %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="bi bi-graph-up"></i></div>
+        <h3>Keine Daten verf&uuml;gbar</h3>
+        <p>Noch keine Preisdaten f&uuml;r <strong>{{ brand }} {{ model }}</strong> gesammelt.
+           Starte den Live-Feed oder f&uuml;hre eine Suche durch.</p>
+        <div style="display:flex; gap:var(--spacing-sm); justify-content:center; margin-top:var(--spacing-md);">
+            <a href="{{ url_for('live_feed') }}" class="btn-sahara">Live Feed</a>
+            <a href="{{ url_for('search', brand=brand, model=model) }}" class="btn-sahara-outline">Suche starten</a>
+        </div>
+    </div>
+    {% else %}
+
+    {% if stats %}
+    <div class="kpi-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:var(--spacing-md); margin-bottom:var(--spacing-xl);">
+        <div class="detail-info-card text-center">
+            <p class="section-label">Akt. Durchschnitt</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem;">
+                {{ "{:,.0f}".format(stats.current_avg).replace(",",".") }} &euro;
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">letzter Datenpunkt</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Preistrend</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem;
+                        color:{{ 'var(--color-success)' if stats.trend_pct <= 0 else 'var(--color-danger)' }}">
+                {{ '+' if stats.trend_pct > 0 else '' }}{{ stats.trend_pct }}%
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">vs. Beginn des Zeitraums</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">G&uuml;nstigstes</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem; color:var(--color-success);">
+                {{ "{:,.0f}".format(stats.overall_min).replace(",",".") }} &euro;
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">im Zeitraum</p>
+        </div>
+        <div class="detail-info-card text-center">
+            <p class="section-label">Teuerstes</p>
+            <div style="font-family:var(--font-heading); font-size:1.8rem; color:var(--color-danger);">
+                {{ "{:,.0f}".format(stats.overall_max).replace(",",".") }} &euro;
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe);">im Zeitraum</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="chart-container" style="margin-bottom:var(--spacing-md); padding:var(--spacing-lg);">
+        <p class="section-label" style="margin-bottom:var(--spacing-md);">
+            Preisentwicklung &mdash; {{ brand }} {{ model }} ({{ days }} Tage)
+        </p>
+        <canvas id="marketChart" height="320"></canvas>
+    </div>
+
+    <div class="chart-container" style="margin-bottom:var(--spacing-xl); padding:var(--spacing-lg);">
+        <p class="section-label" style="margin-bottom:var(--spacing-md);">Anzahl Inserate pro Tag</p>
+        <canvas id="volumeChart" height="160"></canvas>
+    </div>
+
+    {% if stats and stats.cheapest %}
+    <div style="margin-bottom:var(--spacing-xl);">
+        <div class="section-header" style="text-align:left; margin-bottom:var(--spacing-md);">
+            <p class="section-label">Aktuell g&uuml;nstig</p>
+            <h3 class="section-title" style="font-size:1.4rem;">Die g&uuml;nstigsten Angebote</h3>
+        </div>
+        {% set pm = {'mobile_de':('Mobile.de','badge-mobile'),'autoscout24':('AutoScout24','badge-autoscout'),
+                     'kleinanzeigen':('Kleinanzeigen','badge-kleinanzeigen'),'pkw_de':('pkw.de','badge-pkw'),
+                     'autohero':('Autohero','badge-autohero'),'heycar':('heycar','badge-heycar')} %}
+        <div class="product-grid" style="grid-template-columns:repeat(3,1fr);">
+            {% for car in stats.cheapest %}
+            <div class="sahara-card reveal">
+                <div class="card-image-wrapper">
+                    {% if car.image_url %}
+                    <img src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy"
+                         referrerpolicy="no-referrer"
+                         onerror="this.parentElement.innerHTML='<div class=card-image-placeholder><i class=bi\ bi-car-front></i></div>'">
+                    {% else %}
+                    <div class="card-image-placeholder"><i class="bi bi-car-front"></i></div>
+                    {% endif %}
+                    {% set p = pm.get(car.platform, (car.platform,'')) %}
+                    <span class="card-badge {{ p[1] }}">{{ p[0] }}</span>
+                </div>
+                <div class="card-body-sahara">
+                    <h3 class="card-title-sahara">
+                        <a href="{{ url_for('car_detail', car_id=car.id) }}">{{ car.title or 'Unbekannt' }}</a>
+                    </h3>
+                    <div class="card-price" style="color:var(--color-success);">
+                        {{ "{:,.0f}".format(car.price).replace(",", ".") }} &euro;
+                    </div>
+                    <div class="card-specs">
+                        {% if car.year %}<span class="spec-tag">{{ car.year }}</span>{% endif %}
+                        {% if car.mileage %}<span class="spec-tag">{{ "{:,.0f}".format(car.mileage).replace(",",".") }} km</span>{% endif %}
+                    </div>
+                    <div class="card-actions">
+                        <a href="{{ url_for('car_detail', car_id=car.id) }}"
+                           class="btn-sahara btn-sahara-sm" style="flex:1; text-align:center;">Details</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}{# end market_data #}
+    {% endif %}{# end overview / brand|model #}
+
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if overview and overview.daily_data %}
+const marketData = {{ overview.daily_data | tojson }};
+renderMarketChart('marketChart', marketData);
+renderVolumeChart('volumeChart', marketData);
+{% elif market_data %}
+const marketData = {{ market_data | tojson }};
+renderMarketChart('marketChart', marketData);
+renderVolumeChart('volumeChart', marketData);
+{% endif %}
+{% if overview and overview.top_brands %}
+renderBrandChart('brandChart', {{ overview.top_brands | tojson }});
+{% endif %}
+{% if overview and overview.fuel_distribution %}
+renderFuelChart('fuelChart', {{ overview.fuel_distribution | tojson }});
+{% endif %}
+{% if overview and overview.segment_data %}
+renderSegmentChart('segmentChart', {{ overview.segment_data | tojson }});
+{% endif %}
+{% if overview and overview.platform_distribution %}
+renderPlatformChart('platformChart', {{ overview.platform_distribution | tojson }});
+{% endif %}
+</script>
+{% endblock %}

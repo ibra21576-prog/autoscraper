@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}{{ car.title }} — AutoScraper{% endblock %}
+
+{% block content %}
+<section class="section-spacing">
+    <a href="javascript:history.back()" class="btn-sahara-outline btn-sahara-sm" style="margin-bottom: var(--spacing-lg); display: inline-flex;">
+        <i class="bi bi-arrow-left"></i> Zur&uuml;ck
+    </a>
+
+    <div class="detail-layout">
+        <!-- Gallery -->
+        <div>
+            {% if car.images and car.images|length > 0 %}
+            <div id="carGallery" class="carousel slide" data-bs-ride="false">
+                <div class="carousel-inner">
+                    {% for img in car.images %}
+                    <div class="carousel-item {% if loop.first %}active{% endif %}">
+                        <div class="gallery-main">
+                            <img src="{{ img }}" alt="Bild {{ loop.index }}"
+                                 onerror="this.src='https://via.placeholder.com/800x600?text=Nicht+verf%C3%BCgbar'"
+                                 referrerpolicy="no-referrer">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if car.images|length > 1 %}
+                <button class="carousel-control-prev" type="button" data-bs-target="#carGallery" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#carGallery" data-bs-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </button>
+                {% endif %}
+            </div>
+
+            {% if car.images|length > 1 %}
+            <div class="gallery-thumbs">
+                {% for img in car.images %}
+                <img src="{{ img }}" class="gallery-thumb {% if loop.first %}active{% endif %}"
+                     data-bs-target="#carGallery" data-bs-slide-to="{{ loop.index0 }}"
+                     alt="Thumb {{ loop.index }}" referrerpolicy="no-referrer"
+                     onerror="this.style.display='none'">
+                {% endfor %}
+            </div>
+            <p style="font-size:0.75rem; color:var(--color-taupe); margin-top:4px;">{{ car.images|length }} Bilder</p>
+            {% endif %}
+
+            {% elif car.image_url %}
+            <div class="gallery-main">
+                <img src="{{ car.image_url }}" alt="{{ car.title }}" referrerpolicy="no-referrer"
+                     onerror="this.src='https://via.placeholder.com/800x600?text=Nicht+verf%C3%BCgbar'">
+            </div>
+            {% else %}
+            <div class="gallery-main">
+                <div class="card-image-placeholder" style="height:100%;">
+                    <i class="bi bi-car-front"></i>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div>
+            <!-- Platform Badge -->
+            {% set platform_map = {
+                'mobile_de': ('Mobile.de', 'badge-mobile'),
+                'autoscout24': ('AutoScout24', 'badge-autoscout'),
+                'kleinanzeigen': ('Kleinanzeigen', 'badge-kleinanzeigen'),
+                'pkw_de': ('pkw.de', 'badge-pkw'),
+                'autohero': ('Autohero', 'badge-autohero'),
+                'heycar': ('heycar', 'badge-heycar'),
+            } %}
+            {% set pm = platform_map.get(car.platform, (car.platform, '')) %}
+            <span class="card-badge {{ pm[1] }}"
+                style="position:static; display:inline-block; margin-bottom:var(--spacing-sm);">
+                {{ pm[0] }}
+            </span>
+
+            <h1 style="font-family:var(--font-heading); font-size:1.8rem; margin-bottom:var(--spacing-sm);">{{ car.title }}</h1>
+
+            <div class="detail-price">
+                {% if car.price %}
+                {{ "{:,.0f}".format(car.price).replace(",", ".") }} &euro;
+                {% else %}
+                Preis auf Anfrage
+                {% endif %}
+            </div>
+
+            <div class="divider" style="margin: var(--spacing-md) 0;"></div>
+
+            <!-- Fahrzeugdaten -->
+            <div class="detail-info-card" style="margin-bottom: var(--spacing-md);">
+                <p class="section-label" style="margin-bottom: var(--spacing-sm);">Fahrzeugdaten</p>
+                <table class="detail-table">
+                    {% if car.brand %}
+                    <tr><th>Marke</th><td>{{ car.brand }}</td></tr>
+                    {% endif %}
+                    {% if car.model %}
+                    <tr><th>Modell</th><td>{{ car.model }}</td></tr>
+                    {% endif %}
+                    {% if car.year %}
+                    <tr><th>Baujahr</th><td>{{ car.year }}</td></tr>
+                    {% endif %}
+                    {% if car.mileage %}
+                    <tr><th>Kilometerstand</th><td>{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</td></tr>
+                    {% endif %}
+                    {% if car.fuel_type %}
+                    <tr><th>Kraftstoff</th><td>{{ car.fuel_type }}</td></tr>
+                    {% endif %}
+                    {% if car.power %}
+                    <tr><th>Leistung</th><td>{{ car.power }}</td></tr>
+                    {% endif %}
+                    {% if car.transmission %}
+                    <tr><th>Getriebe</th><td>{{ car.transmission }}</td></tr>
+                    {% endif %}
+                    {% if car.color %}
+                    <tr><th>Farbe</th><td>{{ car.color }}</td></tr>
+                    {% endif %}
+                    {% if car.seller_name %}
+                    <tr><th>Verk&auml;ufer</th><td>{{ car.seller_name }}</td></tr>
+                    {% endif %}
+                    {% if car.seller_type %}
+                    <tr><th>Typ</th><td>{{ car.seller_type }}</td></tr>
+                    {% endif %}
+                    {% if car.location %}
+                    <tr><th>Standort</th><td>{{ car.location }}</td></tr>
+                    {% endif %}
+                    {% if car.first_seen %}
+                    <tr><th>Gefunden</th><td>{{ car.first_seen }}</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+
+            {% if car.description %}
+            <div class="detail-info-card" style="margin-bottom: var(--spacing-md);">
+                <p class="section-label" style="margin-bottom: var(--spacing-sm);">Beschreibung</p>
+                <p style="font-size: 0.9rem; white-space: pre-line; color: var(--color-taupe);">{{ car.description }}</p>
+            </div>
+            {% endif %}
+
+            {% if car.price_history and car.price_history|length > 0 %}
+            <div class="chart-container" style="margin-bottom: var(--spacing-md);">
+                <p class="section-label" style="margin-bottom: var(--spacing-sm);">Preisverlauf</p>
+                <canvas id="priceChart" height="180"></canvas>
+            </div>
+            {% endif %}
+
+            <div class="detail-actions">
+                {% if car.url %}
+                <a href="{{ car.url }}" target="_blank" class="btn-sahara">Auf Plattform ansehen</a>
+                {% endif %}
+                <form action="{{ url_for('track', car_id=car.id) }}" method="POST" style="flex:1;">
+                    <input type="hidden" name="action" value="{{ 'untrack' if car.is_tracked else 'track' }}">
+                    <button type="submit" class="{{ 'btn-sahara btn-sahara-success' if car.is_tracked else 'btn-sahara-outline' }}" style="width:100%;">
+                        {{ 'Tracking entfernen' if car.is_tracked else 'Fahrzeug tracken' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if car.price_history and car.price_history|length > 0 %}
+<script>
+const priceData = {{ car.price_history | tojson }};
+renderPriceChart('priceChart', priceData);
+</script>
+{% endif %}
+<script>
+// Thumbnail sync
+document.querySelectorAll('.gallery-thumb').forEach(thumb => {
+    thumb.addEventListener('click', function() {
+        document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+const gallery = document.getElementById('carGallery');
+if (gallery) {
+    gallery.addEventListener('slid.bs.carousel', function(e) {
+        document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+        const thumbs = document.querySelectorAll('.gallery-thumb');
+        if (thumbs[e.to]) thumbs[e.to].classList.add('active');
+    });
+}
+</script>
+{% endblock %}
