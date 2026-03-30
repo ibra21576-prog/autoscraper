@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ car.title }} — AutoScraper{% endblock %}
+{% block title %}{{ car.title }} — SAIF AutoMarkt{% endblock %}
 
 {% block content %}
 <section class="section-spacing">
@@ -16,9 +16,8 @@
                     {% for img in car.images %}
                     <div class="carousel-item {% if loop.first %}active{% endif %}">
                         <div class="gallery-main">
-                            <img src="{{ img }}" alt="Bild {{ loop.index }}"
-                                 onerror="this.src='https://via.placeholder.com/800x600?text=Nicht+verf%C3%BCgbar'"
-                                 referrerpolicy="no-referrer">
+                            <img src="{{ img }}" alt="Bild {{ loop.index }}" referrerpolicy="no-referrer"
+                                 onerror="this.src='https://via.placeholder.com/800x600?text=Nicht+verf%C3%BCgbar'">
                         </div>
                     </div>
                     {% endfor %}
@@ -32,7 +31,6 @@
                 </button>
                 {% endif %}
             </div>
-
             {% if car.images|length > 1 %}
             <div class="gallery-thumbs">
                 {% for img in car.images %}
@@ -44,7 +42,6 @@
             </div>
             <p style="font-size:0.75rem; color:var(--color-taupe); margin-top:4px;">{{ car.images|length }} Bilder</p>
             {% endif %}
-
             {% elif car.image_url %}
             <div class="gallery-main">
                 <img src="{{ car.image_url }}" alt="{{ car.title }}" referrerpolicy="no-referrer"
@@ -52,16 +49,40 @@
             </div>
             {% else %}
             <div class="gallery-main">
-                <div class="card-image-placeholder" style="height:100%;">
-                    <i class="bi bi-car-front"></i>
-                </div>
+                <div class="card-image-placeholder" style="height:100%;"><i class="bi bi-car-front"></i></div>
             </div>
             {% endif %}
+
+            <!-- Marktvergleich unter dem Bild -->
+            <div class="detail-info-card" style="margin-top:var(--spacing-md);" id="marketCompare">
+                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-graph-up"></i> Marktvergleich</p>
+                <div id="marketLoading" style="text-align:center;padding:1rem;color:var(--color-taupe);font-size:.85rem;">
+                    <div class="sahara-spinner" style="width:20px;height:20px;margin:0 auto .5rem;"></div>
+                    Vergleiche mit &auml;hnlichen Angeboten...
+                </div>
+                <div id="marketData" style="display:none;">
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:12px;">
+                        <div style="background:var(--color-sand);border-radius:8px;padding:10px;">
+                            <div style="font-family:var(--font-heading);font-size:1.2rem;" id="mAvg">--</div>
+                            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);">&Oslash; Preis</div>
+                        </div>
+                        <div style="background:var(--color-sand);border-radius:8px;padding:10px;">
+                            <div style="font-family:var(--font-heading);font-size:1.2rem;" id="mMin">--</div>
+                            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);">G&uuml;nstigster</div>
+                        </div>
+                        <div style="background:var(--color-sand);border-radius:8px;padding:10px;">
+                            <div style="font-family:var(--font-heading);font-size:1.2rem;" id="mMax">--</div>
+                            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);">Teuerster</div>
+                        </div>
+                    </div>
+                    <div id="mVerdict" style="text-align:center;padding:8px;border-radius:6px;font-weight:600;font-size:.9rem;"></div>
+                    <p style="font-size:.75rem;color:var(--color-taupe);margin-top:8px;text-align:center;" id="mCount"></p>
+                </div>
+            </div>
         </div>
 
         <!-- Info -->
         <div>
-            <!-- Platform Badge -->
             {% set platform_map = {
                 'mobile_de': ('Mobile.de', 'badge-mobile'),
                 'autoscout24': ('AutoScout24', 'badge-autoscout'),
@@ -71,12 +92,9 @@
                 'heycar': ('heycar', 'badge-heycar'),
             } %}
             {% set pm = platform_map.get(car.platform, (car.platform, '')) %}
-            <span class="card-badge {{ pm[1] }}"
-                style="position:static; display:inline-block; margin-bottom:var(--spacing-sm);">
-                {{ pm[0] }}
-            </span>
+            <span class="card-badge {{ pm[1] }}" style="position:static;display:inline-block;margin-bottom:var(--spacing-sm);">{{ pm[0] }}</span>
 
-            <h1 style="font-family:var(--font-heading); font-size:1.8rem; margin-bottom:var(--spacing-sm);">{{ car.title }}</h1>
+            <h1 style="font-family:var(--font-heading);font-size:1.8rem;margin-bottom:var(--spacing-sm);">{{ car.title }}</h1>
 
             <div class="detail-price">
                 {% if car.price %}
@@ -86,72 +104,67 @@
                 {% endif %}
             </div>
 
-            <div class="divider" style="margin: var(--spacing-md) 0;"></div>
+            <div class="divider" style="margin:var(--spacing-md) 0;"></div>
 
             <!-- Fahrzeugdaten -->
-            <div class="detail-info-card" style="margin-bottom: var(--spacing-md);">
-                <p class="section-label" style="margin-bottom: var(--spacing-sm);">Fahrzeugdaten</p>
+            <div class="detail-info-card" style="margin-bottom:var(--spacing-md);">
+                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-car-front"></i> Fahrzeugdaten</p>
                 <table class="detail-table">
-                    {% if car.brand %}
-                    <tr><th>Marke</th><td>{{ car.brand }}</td></tr>
-                    {% endif %}
-                    {% if car.model %}
-                    <tr><th>Modell</th><td>{{ car.model }}</td></tr>
-                    {% endif %}
-                    {% if car.year %}
-                    <tr><th>Baujahr</th><td>{{ car.year }}</td></tr>
-                    {% endif %}
-                    {% if car.mileage %}
-                    <tr><th>Kilometerstand</th><td>{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</td></tr>
-                    {% endif %}
-                    {% if car.fuel_type %}
-                    <tr><th>Kraftstoff</th><td>{{ car.fuel_type }}</td></tr>
-                    {% endif %}
-                    {% if car.power %}
-                    <tr><th>Leistung</th><td>{{ car.power }}</td></tr>
-                    {% endif %}
-                    {% if car.transmission %}
-                    <tr><th>Getriebe</th><td>{{ car.transmission }}</td></tr>
-                    {% endif %}
-                    {% if car.color %}
-                    <tr><th>Farbe</th><td>{{ car.color }}</td></tr>
-                    {% endif %}
-                    {% if car.seller_name %}
-                    <tr><th>Verk&auml;ufer</th><td>{{ car.seller_name }}</td></tr>
-                    {% endif %}
-                    {% if car.seller_type %}
-                    <tr><th>Typ</th><td>{{ car.seller_type }}</td></tr>
-                    {% endif %}
-                    {% if car.location %}
-                    <tr><th>Standort</th><td>{{ car.location }}</td></tr>
-                    {% endif %}
-                    {% if car.first_seen %}
-                    <tr><th>Gefunden</th><td>{{ car.first_seen }}</td></tr>
-                    {% endif %}
+                    {% if car.brand %}<tr><th><i class="bi bi-tag"></i> Marke</th><td>{{ car.brand }}</td></tr>{% endif %}
+                    {% if car.model %}<tr><th><i class="bi bi-bookmark"></i> Modell</th><td>{{ car.model }}</td></tr>{% endif %}
+                    {% if car.year %}<tr><th><i class="bi bi-calendar3"></i> Baujahr</th><td>{{ car.year }}</td></tr>{% endif %}
+                    {% if car.mileage %}<tr><th><i class="bi bi-speedometer2"></i> Kilometerstand</th><td>{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</td></tr>{% endif %}
+                    {% if car.fuel_type %}<tr><th><i class="bi bi-fuel-pump"></i> Kraftstoff</th><td>{{ car.fuel_type }}</td></tr>{% endif %}
+                    {% if car.power %}<tr><th><i class="bi bi-lightning"></i> Leistung</th><td>{{ car.power }}</td></tr>{% endif %}
+                    {% if car.transmission %}<tr><th><i class="bi bi-gear"></i> Getriebe</th><td>{{ car.transmission }}</td></tr>{% endif %}
+                    {% if car.color %}<tr><th><i class="bi bi-palette"></i> Farbe</th><td>{{ car.color }}</td></tr>{% endif %}
+                </table>
+            </div>
+
+            <!-- Verkäufer & Standort -->
+            {% if car.seller_name or car.seller_type or car.location %}
+            <div class="detail-info-card" style="margin-bottom:var(--spacing-md);">
+                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-person"></i> Verk&auml;ufer</p>
+                <table class="detail-table">
+                    {% if car.seller_name %}<tr><th>Name</th><td>{{ car.seller_name }}</td></tr>{% endif %}
+                    {% if car.seller_type %}<tr><th>Typ</th><td>{{ car.seller_type }}</td></tr>{% endif %}
+                    {% if car.location %}<tr><th><i class="bi bi-geo-alt"></i> Standort</th><td>{{ car.location }}</td></tr>{% endif %}
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Zeitstempel -->
+            <div class="detail-info-card" style="margin-bottom:var(--spacing-md);">
+                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-clock-history"></i> Tracking</p>
+                <table class="detail-table">
+                    {% if car.first_seen %}<tr><th>Zuerst gesehen</th><td>{{ car.first_seen }}</td></tr>{% endif %}
+                    <tr><th>Plattform</th><td>{{ pm[0] }}</td></tr>
+                    {% if car.external_id %}<tr><th>Inserat-ID</th><td style="font-family:monospace;font-size:.85rem;">{{ car.external_id }}</td></tr>{% endif %}
                 </table>
             </div>
 
             {% if car.description %}
-            <div class="detail-info-card" style="margin-bottom: var(--spacing-md);">
-                <p class="section-label" style="margin-bottom: var(--spacing-sm);">Beschreibung</p>
-                <p style="font-size: 0.9rem; white-space: pre-line; color: var(--color-taupe);">{{ car.description }}</p>
+            <div class="detail-info-card" style="margin-bottom:var(--spacing-md);">
+                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-text-left"></i> Beschreibung</p>
+                <p style="font-size:.9rem;white-space:pre-line;color:var(--color-taupe);">{{ car.description }}</p>
             </div>
             {% endif %}
 
             {% if car.price_history and car.price_history|length > 0 %}
-            <div class="chart-container" style="margin-bottom: var(--spacing-md);">
-                <p class="section-label" style="margin-bottom: var(--spacing-sm);">Preisverlauf</p>
+            <div class="chart-container" style="margin-bottom:var(--spacing-md);">
+                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-graph-down"></i> Preisverlauf</p>
                 <canvas id="priceChart" height="180"></canvas>
             </div>
             {% endif %}
 
             <div class="detail-actions">
                 {% if car.url %}
-                <a href="{{ car.url }}" target="_blank" class="btn-sahara">Auf Plattform ansehen</a>
+                <a href="{{ car.url }}" target="_blank" class="btn-sahara"><i class="bi bi-box-arrow-up-right"></i> Auf Plattform ansehen</a>
                 {% endif %}
                 <form action="{{ url_for('track', car_id=car.id) }}" method="POST" style="flex:1;">
                     <input type="hidden" name="action" value="{{ 'untrack' if car.is_tracked else 'track' }}">
                     <button type="submit" class="{{ 'btn-sahara btn-sahara-success' if car.is_tracked else 'btn-sahara-outline' }}" style="width:100%;">
+                        <i class="bi bi-{{ 'bookmark-check-fill' if car.is_tracked else 'bookmark-plus' }}"></i>
                         {{ 'Tracking entfernen' if car.is_tracked else 'Fahrzeug tracken' }}
                     </button>
                 </form>
@@ -184,5 +197,40 @@ if (gallery) {
         if (thumbs[e.to]) thumbs[e.to].classList.add('active');
     });
 }
+
+// Marktvergleich laden
+(async function(){
+    const brand = {{ car.brand|tojson if car.brand else '""' }};
+    if (!brand) { document.getElementById('marketCompare').style.display='none'; return; }
+    try {
+        const params = new URLSearchParams({brand: brand});
+        {% if car.model %}params.set('model', {{ car.model|tojson }});{% endif %}
+        const r = await fetch('/api/markt-stats?' + params);
+        const d = await r.json();
+        document.getElementById('marketLoading').style.display='none';
+        if (!d.stats || d.count < 3) { document.getElementById('marketCompare').style.display='none'; return; }
+        document.getElementById('marketData').style.display='block';
+        const fmt = n => n.toLocaleString('de-DE') + ' \u20AC';
+        document.getElementById('mAvg').textContent = fmt(d.stats.avg);
+        document.getElementById('mMin').textContent = fmt(d.stats.min);
+        document.getElementById('mMax').textContent = fmt(d.stats.max);
+        document.getElementById('mCount').textContent = 'Basierend auf ' + d.count + ' Angeboten';
+        const price = {{ car.price or 0 }};
+        const v = document.getElementById('mVerdict');
+        if (price && d.stats.avg) {
+            const diff = ((price - d.stats.avg) / d.stats.avg * 100).toFixed(0);
+            if (price < d.stats.avg * 0.85) {
+                v.style.background='#dcfce7'; v.style.color='#166534';
+                v.innerHTML = '<i class="bi bi-check-circle"></i> ' + Math.abs(diff) + '% unter Durchschnitt — G\u00fcnstiges Angebot!';
+            } else if (price > d.stats.avg * 1.15) {
+                v.style.background='#fce4ec'; v.style.color='#b71c1c';
+                v.innerHTML = '<i class="bi bi-exclamation-triangle"></i> ' + diff + '% \u00fcber Durchschnitt — Eher teuer';
+            } else {
+                v.style.background='var(--color-sand)'; v.style.color='var(--color-taupe)';
+                v.innerHTML = '<i class="bi bi-check2"></i> Fairer Marktpreis';
+            }
+        }
+    } catch(e) { document.getElementById('marketCompare').style.display='none'; }
+})();
 </script>
 {% endblock %}

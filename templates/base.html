@@ -17,7 +17,15 @@
         <div class="header-inner">
             <!-- Logo -->
             <a class="sahara-logo" href="{{ url_for('index') }}">
-                AUTO<span class="logo-accent">SCRAPER</span>
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style="vertical-align:-5px;margin-right:6px;">
+                    <rect width="32" height="32" rx="6" fill="#111"/>
+                    <path d="M6 22l4-6h12l4 6H6z" fill="#CD9B77"/>
+                    <circle cx="11" cy="22" r="2.5" fill="#111" stroke="#CD9B77" stroke-width="1"/>
+                    <circle cx="21" cy="22" r="2.5" fill="#111" stroke="#CD9B77" stroke-width="1"/>
+                    <path d="M10 16l2-5h8l2 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+                    <text x="16" y="9" text-anchor="middle" fill="#CD9B77" font-size="6" font-weight="bold" font-family="Inter,sans-serif">S</text>
+                </svg>
+                SAIF <span class="logo-accent">AutoMarkt</span>
             </a>
 
             <!-- Desktop Nav -->
@@ -81,7 +89,7 @@
     <footer class="sahara-footer">
         <div class="footer-inner">
             <div class="footer-brand">
-                AUTO<span class="logo-accent">SCRAPER</span>
+                SAIF <span class="logo-accent">AutoMarkt</span>
             </div>
             <div class="footer-links">
                 <a href="{{ url_for('live_feed') }}">Live</a>
@@ -92,7 +100,7 @@
                 <a href="{{ url_for('alerts') }}">Alerts</a>
             </div>
             <div class="footer-copy">
-                Nur f&uuml;r privaten Gebrauch
+                SAIF AutoMarkt &mdash; Dein Markt&uuml;berblick
             </div>
         </div>
     </footer>

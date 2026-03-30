@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Live Feed — AutoScraper{% endblock %}
+{% block title %}Live Feed — SAIF AutoMarkt{% endblock %}
 
 {% block content %}
 <section class="section-spacing">
@@ -8,12 +8,13 @@
         <div class="live-title">
             <span class="live-dot-lg"></span>
             <h2 class="section-title" style="margin-bottom:0;">Live Feed</h2>
-            <span class="live-count" id="totalCount">{{ status.total_found }} gefunden</span>
+            <span class="live-count" id="totalCount">{{ cars|length }} gefunden</span>
         </div>
         <div class="live-status" id="statusText">
             {% if status.running %}
             Scannt <strong id="currentPlatform">{{ status.current_platform or '...' }}</strong>
             <span id="lastScrape">{{ status.last_scrape or '' }}</span>
+            — aktualisiert sich automatisch
             {% else %}
             Scraper nicht aktiv
             {% endif %}
@@ -23,9 +24,9 @@
     <!-- Filter -->
     <div class="filter-bar">
         <button class="filter-btn active" data-platform="all">Alle</button>
-        <button class="filter-btn" data-platform="mobile_de">Mobile.de</button>
-        <button class="filter-btn" data-platform="autoscout24">AutoScout24</button>
         <button class="filter-btn" data-platform="kleinanzeigen">Kleinanzeigen</button>
+        <button class="filter-btn" data-platform="autoscout24">AutoScout24</button>
+        <button class="filter-btn" data-platform="mobile_de">Mobile.de</button>
     </div>
 
     <!-- Feed -->
@@ -61,19 +62,33 @@
                     {% if car.price %}{{ "{:,.0f}".format(car.price).replace(",", ".") }} &euro;{% else %}Auf Anfrage{% endif %}
                 </div>
                 <div class="card-specs">
-                    {% if car.year %}<span class="spec-tag">{{ car.year }}</span>{% endif %}
-                    {% if car.mileage %}<span class="spec-tag">{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</span>{% endif %}
-                    {% if car.fuel_type %}<span class="spec-tag">{{ car.fuel_type }}</span>{% endif %}
-                    {% if car.power %}<span class="spec-tag">{{ car.power }}</span>{% endif %}
+                    {% if car.year %}<span class="spec-tag"><i class="bi bi-calendar3"></i> {{ car.year }}</span>{% endif %}
+                    {% if car.mileage %}<span class="spec-tag"><i class="bi bi-speedometer2"></i> {{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</span>{% endif %}
+                    {% if car.fuel_type %}<span class="spec-tag"><i class="bi bi-fuel-pump"></i> {{ car.fuel_type }}</span>{% endif %}
+                    {% if car.power %}<span class="spec-tag"><i class="bi bi-lightning"></i> {{ car.power }}</span>{% endif %}
+                    {% if car.transmission %}<span class="spec-tag"><i class="bi bi-gear"></i> {{ car.transmission }}</span>{% endif %}
+                    {% if car.color %}<span class="spec-tag"><i class="bi bi-palette"></i> {{ car.color }}</span>{% endif %}
                 </div>
-                {% if car.location %}
-                <div class="card-location"><i class="bi bi-geo-alt"></i> {{ car.location }}</div>
-                {% endif %}
-                <div class="card-actions">
-                    {% if car.url %}
-                    <a href="{{ car.url }}" target="_blank" class="btn-sahara-outline btn-sahara-sm">Ansehen</a>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:.8rem;color:var(--color-taupe);">
+                    {% if car.location %}
+                    <span><i class="bi bi-geo-alt"></i> {{ car.location }}</span>
                     {% endif %}
-                    <a href="{{ url_for('car_detail', car_id=car.id) }}" class="btn-sahara btn-sahara-sm" style="flex:1; text-align:center;">Details</a>
+                    {% if car.seller_type %}
+                    <span>&middot; <i class="bi bi-person"></i> {{ car.seller_type }}</span>
+                    {% endif %}
+                    {% if car.first_seen %}
+                    <span>&middot; <i class="bi bi-clock"></i> {{ car.first_seen.strftime('%d.%m. %H:%M') if car.first_seen.strftime is defined else car.first_seen }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-actions" style="margin-top:10px;">
+                    {% if car.url %}
+                    <a href="{{ car.url }}" target="_blank" class="btn-sahara-outline btn-sahara-sm">
+                        <i class="bi bi-box-arrow-up-right"></i> Original
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('car_detail', car_id=car.id) }}" class="btn-sahara btn-sahara-sm" style="flex:1; text-align:center;">
+                        <i class="bi bi-eye"></i> Details
+                    </a>
                 </div>
             </div>
         </div>

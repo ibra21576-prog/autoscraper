@@ -1,19 +1,63 @@
 {% extends "base.html" %}
-{% block title %}AutoScraper — Finde dein Traumauto{% endblock %}
+{% block title %}SAIF AutoMarkt — Finde dein Traumauto{% endblock %}
 
 {% block hero %}
 <section class="sahara-hero">
     <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80');"></div>
     <div class="hero-content">
-        <p class="hero-subtitle">Mobile.de &middot; AutoScout24 &middot; Kleinanzeigen</p>
-        <h1 class="hero-title">Finde dein<br><em>Traumauto</em></h1>
+        <p class="hero-subtitle">Kleinanzeigen &middot; AutoScout24 &middot; Marktanalyse</p>
+        <h1 class="hero-title">SAIF<br><em>AutoMarkt</em></h1>
+        <p style="color:rgba(255,255,255,.7);font-size:1.05rem;margin-top:.8rem;max-width:500px;margin-left:auto;margin-right:auto;">
+            Echtzeit-Marktdaten, Preisanalysen und die besten Angebote &mdash; automatisch gesammelt, intelligent aufbereitet.
+        </p>
         <div class="divider" style="background: var(--color-bronze); margin: 1.6rem auto;"></div>
-        <a href="#search" class="btn-sahara-light">Jetzt suchen</a>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <a href="#search" class="btn-sahara-light">Jetzt suchen</a>
+            <a href="{{ url_for('live_feed') }}" class="btn-sahara-light" style="background:transparent;border:1.5px solid rgba(255,255,255,.5);">Live Feed</a>
+        </div>
     </div>
 </section>
 {% endblock %}
 
 {% block content %}
+<!-- Quick Stats -->
+<section style="margin-top:-2.5rem;position:relative;z-index:10;margin-bottom:var(--spacing-lg);">
+    <div class="quick-stats" id="quickStats">
+        <div class="qs-card">
+            <div class="qs-num" id="qsTotal">--</div>
+            <div class="qs-label">Fahrzeuge gesamt</div>
+        </div>
+        <div class="qs-card">
+            <div class="qs-num" id="qsBrands">--</div>
+            <div class="qs-label">Marken erfasst</div>
+        </div>
+        <div class="qs-card">
+            <div class="qs-num" id="qsAvg">--</div>
+            <div class="qs-label">&Oslash; Preis</div>
+        </div>
+        <div class="qs-card">
+            <div class="qs-num" id="qsToday">--</div>
+            <div class="qs-label">Heute neu</div>
+        </div>
+    </div>
+</section>
+
+<style>
+.quick-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+@media(max-width:768px){.quick-stats{grid-template-columns:repeat(2,1fr);}}
+.qs-card{background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:1.5rem;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.04);}
+.qs-num{font-family:var(--font-heading);font-size:2rem;color:var(--color-black);line-height:1.2;}
+.qs-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--color-taupe);margin-top:.3rem;}
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:var(--spacing-lg);}
+@media(max-width:768px){.feature-grid{grid-template-columns:1fr;}}
+.feat-card{background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:2rem 1.5rem;text-align:center;transition:transform .2s,box-shadow .2s;}
+.feat-card:hover{transform:translateY(-3px);box-shadow:0 8px 30px rgba(0,0,0,.06);}
+.feat-icon{font-size:2rem;margin-bottom:.8rem;color:var(--color-bronze);}
+.feat-title{font-family:var(--font-heading);font-size:1.15rem;margin-bottom:.4rem;}
+.feat-desc{font-size:.88rem;color:var(--color-taupe);line-height:1.5;}
+</style>
+
+<!-- Search -->
 <section class="section-spacing" id="search">
     <div class="section-header">
         <p class="section-label">Fahrzeugsuche</p>
@@ -27,58 +71,29 @@
                     <label class="sahara-label">Marke</label>
                     <select name="brand" class="sahara-select">
                         <option value="">Alle Marken</option>
-                        <option>Alfa Romeo</option>
-                        <option>Audi</option>
-                        <option>BMW</option>
-                        <option>Chevrolet</option>
-                        <option>Citroen</option>
-                        <option>Cupra</option>
-                        <option>Dacia</option>
-                        <option>Fiat</option>
-                        <option>Ford</option>
-                        <option>Honda</option>
-                        <option>Hyundai</option>
-                        <option>Jaguar</option>
-                        <option>Jeep</option>
-                        <option>Kia</option>
-                        <option>Land Rover</option>
-                        <option>Lexus</option>
-                        <option>Mazda</option>
-                        <option>Mercedes-Benz</option>
-                        <option>Mini</option>
-                        <option>Mitsubishi</option>
-                        <option>Nissan</option>
-                        <option>Opel</option>
-                        <option>Peugeot</option>
-                        <option>Porsche</option>
-                        <option>Renault</option>
-                        <option>Seat</option>
-                        <option>Skoda</option>
-                        <option>Smart</option>
-                        <option>Subaru</option>
-                        <option>Suzuki</option>
-                        <option>Tesla</option>
-                        <option>Toyota</option>
-                        <option>Volkswagen</option>
-                        <option>Volvo</option>
+                        <option>Alfa Romeo</option><option>Audi</option><option>BMW</option>
+                        <option>Cupra</option><option>Dacia</option><option>Fiat</option>
+                        <option>Ford</option><option>Honda</option><option>Hyundai</option>
+                        <option>Jeep</option><option>Kia</option><option>Land Rover</option>
+                        <option>Mazda</option><option>Mercedes-Benz</option><option>Mini</option>
+                        <option>Nissan</option><option>Opel</option><option>Peugeot</option>
+                        <option>Porsche</option><option>Renault</option><option>Seat</option>
+                        <option>Skoda</option><option>Smart</option><option>Tesla</option>
+                        <option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
                     </select>
                 </div>
-
                 <div class="sahara-form-group">
                     <label class="sahara-label">Modell</label>
                     <input type="text" name="model" class="sahara-input" placeholder="z.B. A4, 3er, Golf...">
                 </div>
-
                 <div class="sahara-form-group">
                     <label class="sahara-label">Preis von</label>
                     <input type="number" name="price_min" class="sahara-input" placeholder="Min. EUR">
                 </div>
-
                 <div class="sahara-form-group">
                     <label class="sahara-label">Preis bis</label>
                     <input type="number" name="price_max" class="sahara-input" placeholder="Max. EUR">
                 </div>
-
                 <div class="sahara-form-group">
                     <label class="sahara-label">Baujahr ab</label>
                     <select name="year_min" class="sahara-select">
@@ -88,7 +103,6 @@
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="sahara-form-group">
                     <label class="sahara-label">Kilometerstand bis</label>
                     <select name="mileage_max" class="sahara-select">
@@ -102,7 +116,6 @@
                         <option value="200000">200.000 km</option>
                     </select>
                 </div>
-
                 <div class="sahara-form-group">
                     <label class="sahara-label">Kraftstoff</label>
                     <select name="fuel_type" class="sahara-select">
@@ -111,62 +124,77 @@
                         <option value="diesel">Diesel</option>
                         <option value="elektro">Elektro</option>
                         <option value="hybrid">Hybrid</option>
-                        <option value="gas">Gas (LPG/CNG)</option>
                     </select>
                 </div>
-
-                <div class="sahara-form-group full-width">
-                    <label class="sahara-label">Plattformen</label>
-                    <div style="display: flex; gap: 16px; padding-top: 8px; flex-wrap: wrap;">
-                        <label class="sahara-checkbox">
-                            <input type="checkbox" name="platforms" value="mobile_de" checked> Mobile.de
-                        </label>
-                        <label class="sahara-checkbox">
-                            <input type="checkbox" name="platforms" value="autoscout24" checked> AutoScout24
-                        </label>
-                        <label class="sahara-checkbox">
-                            <input type="checkbox" name="platforms" value="kleinanzeigen" checked> Kleinanzeigen
-                        </label>
-                        <label class="sahara-checkbox">
-                            <input type="checkbox" name="platforms" value="pkw_de" checked> pkw.de
-                        </label>
-                        <label class="sahara-checkbox">
-                            <input type="checkbox" name="platforms" value="autohero" checked> Autohero
-                        </label>
-                        <label class="sahara-checkbox">
-                            <input type="checkbox" name="platforms" value="heycar" checked> heycar
-                        </label>
-                    </div>
-                </div>
-
-                <div class="sahara-form-group full-width" style="margin-top: var(--spacing-sm); display: flex; gap: var(--spacing-sm);">
-                    <button type="submit" class="btn-sahara" style="flex: 3;" id="searchBtn">
-                        SUCHE STARTEN
-                    </button>
-                    <button type="submit" form="marketForm" class="btn-sahara-outline" style="flex: 1;">
-                        MARKT ANALYSIEREN
-                    </button>
+                <div class="sahara-form-group full-width" style="margin-top:var(--spacing-sm);display:flex;gap:var(--spacing-sm);">
+                    <button type="submit" class="btn-sahara" style="flex:3;">SUCHE STARTEN</button>
+                    <a href="{{ url_for('marktanalyse') }}" class="btn-sahara-outline" style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;">ANALYSE</a>
                 </div>
             </div>
         </form>
-        <!-- Hidden form for Market redirect -->
-        <form id="marketForm" action="{{ url_for('market') }}" method="GET" style="display:none;">
-            <input type="hidden" name="brand" id="mf_brand">
-            <input type="hidden" name="model" id="mf_model">
-            <input type="hidden" name="fuel_type" id="mf_fuel">
-            <input type="hidden" name="days" value="90">
-        </form>
+    </div>
+</section>
+
+<!-- Features -->
+<section style="padding-bottom:var(--spacing-2xl);">
+    <div class="section-header">
+        <p class="section-label">Was SAIF AutoMarkt kann</p>
+        <h2 class="section-title">Deine Vorteile</h2>
+    </div>
+    <div class="feature-grid">
+        <div class="feat-card">
+            <div class="feat-icon"><i class="bi bi-broadcast"></i></div>
+            <div class="feat-title">Live Tracking</div>
+            <div class="feat-desc">Neue Inserate werden in Echtzeit erfasst und sofort in deinem Feed angezeigt.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon"><i class="bi bi-graph-up"></i></div>
+            <div class="feat-title">Marktanalyse</div>
+            <div class="feat-desc">Durchschnitt, Median, Min/Max &mdash; verstehe den echten Marktwert deines Wunschautos.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon"><i class="bi bi-clock-history"></i></div>
+            <div class="feat-title">Preisverlauf</div>
+            <div class="feat-desc">Verfolge wie sich Preise &uuml;ber Zeit ver&auml;ndern. Kaufe zum richtigen Zeitpunkt.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon"><i class="bi bi-bell"></i></div>
+            <div class="feat-title">Alerts</div>
+            <div class="feat-desc">Werde automatisch benachrichtigt wenn ein Auto deinen Kriterien entspricht.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon"><i class="bi bi-database"></i></div>
+            <div class="feat-title">Dauerhafte Daten</div>
+            <div class="feat-desc">Alle Fahrzeuge werden gespeichert. Perfekt f&uuml;r langfristige Analysen und Vergleiche.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon"><i class="bi bi-shield-check"></i></div>
+            <div class="feat-title">Fair-Preis Check</div>
+            <div class="feat-desc">Jedes Angebot wird automatisch bewertet: G&uuml;nstig, Fair oder Teuer.</div>
+        </div>
     </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Sync search form values to market form before submit
-document.querySelector('[form="marketForm"]')?.addEventListener('click', function() {
-    document.getElementById('mf_brand').value = document.querySelector('[name="brand"]').value;
-    document.getElementById('mf_model').value = document.querySelector('[name="model"]').value;
-    document.getElementById('mf_fuel').value = document.querySelector('[name="fuel_type"]').value;
+// Quick Stats laden
+fetch('/api/markt-stats').then(r=>r.json()).then(d=>{
+    document.getElementById('qsTotal').textContent = d.count ? d.count.toLocaleString('de-DE') : '0';
+    if(d.stats){
+        document.getElementById('qsAvg').textContent = d.stats.avg ? d.stats.avg.toLocaleString('de-DE')+' \u20AC' : '--';
+    }
+    const platforms = Object.keys(d.by_platform||{});
+    document.getElementById('qsBrands').textContent = platforms.length || '--';
+});
+fetch('/api/recent?limit=100').then(r=>r.json()).then(cars=>{
+    const today = new Date().toLocaleDateString('de-DE');
+    const todayCount = cars.filter(c => c.first_seen && c.first_seen.startsWith(today.split('.').slice(0,2).join('.'))).length;
+    document.getElementById('qsToday').textContent = todayCount || 'Neu';
+    if(!document.getElementById('qsBrands').textContent || document.getElementById('qsBrands').textContent==='--'){
+        const brands = new Set(cars.map(c=>c.brand).filter(Boolean));
+        document.getElementById('qsBrands').textContent = brands.size;
+    }
 });
 </script>
 {% endblock %}
