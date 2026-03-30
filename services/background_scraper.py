@@ -99,7 +99,12 @@ def run_background_scrape(app, brands=None):
     Führt einen kompletten Background-Scrape durch.
     Scrapt die Top-Marken von AutoScout24 und Kleinanzeigen.
     """
-    from services.playwright_scraper import run_live_search, CAR_DATA
+    from services.playwright_scraper import run_live_search, CAR_DATA, PLAYWRIGHT_AVAILABLE
+
+    if not PLAYWRIGHT_AVAILABLE:
+        logger.warning("[BG] Playwright nicht installiert — Background-Scrape übersprungen")
+        bg_status['running'] = False
+        return 0
 
     bg_status['running'] = True
     bg_status['errors'] = []

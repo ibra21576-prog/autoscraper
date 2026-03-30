@@ -7,9 +7,15 @@ import asyncio
 import re
 import statistics
 import logging
-from playwright.async_api import async_playwright
 
 logger = logging.getLogger(__name__)
+
+try:
+    from playwright.async_api import async_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    logger.warning("Playwright nicht installiert — Playwright-Scraping deaktiviert")
 
 CAR_DATA = {
     "Audi": ["A1","A3","A4","A5","A6","A7","A8","Q2","Q3","Q5","Q7","Q8","TT","RS3","RS4","RS5","RS6","RS7","e-tron"],
@@ -514,6 +520,10 @@ def analyze_results(results):
 
 
 def run_live_search(brand, model=None, year_from=None, year_to=None, km_to=None, sources=None):
+    if not PLAYWRIGHT_AVAILABLE:
+        logger.warning("Playwright nicht verfügbar — kein Scraping möglich")
+        return [], None
+
     if sources is None:
         # mobile.de standardmäßig deaktiviert (Akamai Anti-Bot)
         sources = ['autoscout24', 'kleinanzeigen']
