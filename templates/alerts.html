@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Alerts — SAIF AutoMarkt{% endblock %}
+{% block title %}Alerts — SAIF{% endblock %}
 
 {% block content %}
 <section class="section-spacing">
@@ -20,28 +20,18 @@
                     </div>
                     <div class="sahara-form-group">
                         <label class="sahara-label">Marke</label>
-                        <select name="brand" class="sahara-select">
+                        <select name="brand" class="sahara-select" id="alertBrand" onchange="alertUpdateModels()">
                             <option value="">Alle Marken</option>
-                            <option>Audi</option>
-                            <option>BMW</option>
-                            <option>Mercedes-Benz</option>
-                            <option>Volkswagen</option>
-                            <option>Opel</option>
-                            <option>Ford</option>
-                            <option>Porsche</option>
-                            <option>Toyota</option>
-                            <option>Tesla</option>
-                            <option>Hyundai</option>
-                            <option>Kia</option>
-                            <option>Skoda</option>
-                            <option>Seat</option>
-                            <option>Renault</option>
-                            <option>Volvo</option>
+                            {% for b in car_brands %}
+                            <option value="{{ b }}">{{ b }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="sahara-form-group">
                         <label class="sahara-label">Modell</label>
-                        <input type="text" name="model" class="sahara-input" placeholder="z.B. A4, Golf...">
+                        <select name="model" class="sahara-select" id="alertModel">
+                            <option value="">Alle Modelle</option>
+                        </select>
                     </div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--spacing-md);">
                         <div class="sahara-form-group">
@@ -123,4 +113,22 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ALERT_CAR_DATA = {{ car_data | tojson }};
+function alertUpdateModels() {
+    const brand = document.getElementById('alertBrand').value;
+    const sel   = document.getElementById('alertModel');
+    sel.innerHTML = '<option value="">Alle Modelle</option>';
+    if (brand && ALERT_CAR_DATA[brand]) {
+        ALERT_CAR_DATA[brand].forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m; opt.textContent = m;
+            sel.appendChild(opt);
+        });
+    }
+}
+</script>
 {% endblock %}

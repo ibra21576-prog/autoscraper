@@ -69,22 +69,18 @@
             <div class="search-grid">
                 <div class="sahara-form-group">
                     <label class="sahara-label">Marke</label>
-                    <select name="brand" class="sahara-select">
+                    <select name="brand" class="sahara-select" id="idxBrand" onchange="idxUpdateModels()">
                         <option value="">Alle Marken</option>
-                        <option>Alfa Romeo</option><option>Audi</option><option>BMW</option>
-                        <option>Cupra</option><option>Dacia</option><option>Fiat</option>
-                        <option>Ford</option><option>Honda</option><option>Hyundai</option>
-                        <option>Jeep</option><option>Kia</option><option>Land Rover</option>
-                        <option>Mazda</option><option>Mercedes-Benz</option><option>Mini</option>
-                        <option>Nissan</option><option>Opel</option><option>Peugeot</option>
-                        <option>Porsche</option><option>Renault</option><option>Seat</option>
-                        <option>Skoda</option><option>Smart</option><option>Tesla</option>
-                        <option>Toyota</option><option>Volkswagen</option><option>Volvo</option>
+                        {% for b in car_brands %}
+                        <option value="{{ b }}">{{ b }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="sahara-form-group">
                     <label class="sahara-label">Modell</label>
-                    <input type="text" name="model" class="sahara-input" placeholder="z.B. A4, 3er, Golf...">
+                    <select name="model" class="sahara-select" id="idxModel">
+                        <option value="">Alle Modelle</option>
+                    </select>
                 </div>
                 <div class="sahara-form-group">
                     <label class="sahara-label">Preis von</label>
@@ -178,6 +174,21 @@
 
 {% block scripts %}
 <script>
+// Dynamische Modell-Auswahl auf Startseite
+const IDX_CAR_DATA = {{ car_data | tojson }};
+function idxUpdateModels() {
+    const brand = document.getElementById('idxBrand').value;
+    const sel   = document.getElementById('idxModel');
+    sel.innerHTML = '<option value="">Alle Modelle</option>';
+    if (brand && IDX_CAR_DATA[brand]) {
+        IDX_CAR_DATA[brand].forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m; opt.textContent = m;
+            sel.appendChild(opt);
+        });
+    }
+}
+
 // Quick Stats laden
 fetch('/api/markt-stats').then(r=>r.json()).then(d=>{
     document.getElementById('qsTotal').textContent = d.count ? d.count.toLocaleString('de-DE') : '0';

@@ -38,7 +38,10 @@ with app.app_context():
 @app.route('/')
 def index():
     """Startseite mit Suchformular."""
-    return render_template('index.html')
+    from services.playwright_scraper import CAR_DATA
+    return render_template('index.html',
+                           car_data=CAR_DATA,
+                           car_brands=sorted(CAR_DATA.keys()))
 
 
 @app.route('/live')
@@ -208,8 +211,11 @@ def tracked():
 def alerts():
     """Alert-Verwaltung."""
     from services.notification import get_alerts
+    from services.playwright_scraper import CAR_DATA
     alert_list = get_alerts()
-    return render_template('alerts.html', alerts=alert_list)
+    return render_template('alerts.html', alerts=alert_list,
+                           car_brands=sorted(CAR_DATA.keys()),
+                           car_data=CAR_DATA)
 
 
 @app.route('/alerts/create', methods=['POST'])
