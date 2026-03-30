@@ -5,6 +5,11 @@ import logging
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_mail import Mail
 from apscheduler.schedulers.background import BackgroundScheduler
+
+# .env laden (lokal: DATABASE_URL -> Neon PostgreSQL)
+from dotenv import load_dotenv
+load_dotenv()
+
 from config import Config
 from models import db, Car
 
