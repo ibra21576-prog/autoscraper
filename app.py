@@ -282,6 +282,8 @@ def api_markt_stats():
     year_from = request.args.get('year_from', type=int)
     year_to = request.args.get('year_to', type=int)
     km_max = request.args.get('km_max', type=int)
+    fuel_type = request.args.get('fuel_type', '').strip()
+    exclude_id = request.args.get('exclude_id', type=int)
 
     query = Car.query.filter(Car.price.isnot(None), Car.price >= 500, Car.price <= 500000)
 
@@ -295,6 +297,10 @@ def api_markt_stats():
         query = query.filter(Car.year <= year_to)
     if km_max:
         query = query.filter(Car.mileage <= km_max)
+    if fuel_type:
+        query = query.filter(func.lower(Car.fuel_type).contains(fuel_type.lower()))
+    if exclude_id:
+        query = query.filter(Car.id != exclude_id)
 
     cars = query.order_by(Car.price.asc()).all()
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ car.title }} — SAIF AutoMarkt{% endblock %}
+{% block title %}{{ car.title }} — SAIF{% endblock %}
 
 {% block content %}
 <section class="section-spacing">
@@ -54,31 +54,100 @@
             {% endif %}
 
             <!-- Marktvergleich unter dem Bild -->
-            <div class="detail-info-card" style="margin-top:var(--spacing-md);" id="marketCompare">
-                <p class="section-label" style="margin-bottom:var(--spacing-sm);"><i class="bi bi-graph-up"></i> Marktvergleich</p>
-                <div id="marketLoading" style="text-align:center;padding:1rem;color:var(--color-taupe);font-size:.85rem;">
-                    <div class="sahara-spinner" style="width:20px;height:20px;margin:0 auto .5rem;"></div>
-                    Vergleiche mit &auml;hnlichen Angeboten...
+            <div class="detail-info-card mc-wrap" id="marketCompare" style="margin-top:var(--spacing-md);">
+                <div class="mc-header">
+                    <p class="section-label" style="margin:0;"><i class="bi bi-bar-chart-line"></i> Marktvergleich</p>
+                    <span class="mc-scope" id="mScope"></span>
                 </div>
+
+                <div id="marketLoading" class="mc-loading">
+                    <div class="sahara-spinner" style="width:18px;height:18px;"></div>
+                    Vergleiche mit identischen Modellen...
+                </div>
+
                 <div id="marketData" style="display:none;">
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:12px;">
-                        <div style="background:var(--color-sand);border-radius:8px;padding:10px;">
-                            <div style="font-family:var(--font-heading);font-size:1.2rem;" id="mAvg">--</div>
-                            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);">&Oslash; Preis</div>
+                    <!-- Verdict Banner -->
+                    <div id="mVerdict" class="mc-verdict"></div>
+
+                    <!-- Stats -->
+                    <div class="mc-stats">
+                        <div class="mc-stat">
+                            <div class="mc-stat-val" id="mAvg">--</div>
+                            <div class="mc-stat-label">&Oslash; Marktpreis</div>
                         </div>
-                        <div style="background:var(--color-sand);border-radius:8px;padding:10px;">
-                            <div style="font-family:var(--font-heading);font-size:1.2rem;" id="mMin">--</div>
-                            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);">G&uuml;nstigster</div>
+                        <div class="mc-stat mc-stat--accent">
+                            <div class="mc-stat-val" id="mThis">--</div>
+                            <div class="mc-stat-label">Dieses Angebot</div>
                         </div>
-                        <div style="background:var(--color-sand);border-radius:8px;padding:10px;">
-                            <div style="font-family:var(--font-heading);font-size:1.2rem;" id="mMax">--</div>
-                            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);">Teuerster</div>
+                        <div class="mc-stat">
+                            <div class="mc-stat-val" id="mMin">--</div>
+                            <div class="mc-stat-label">G&uuml;nstigstes</div>
+                        </div>
+                        <div class="mc-stat">
+                            <div class="mc-stat-val" id="mMax">--</div>
+                            <div class="mc-stat-label">Teuerstes</div>
                         </div>
                     </div>
-                    <div id="mVerdict" style="text-align:center;padding:8px;border-radius:6px;font-weight:600;font-size:.9rem;"></div>
-                    <p style="font-size:.75rem;color:var(--color-taupe);margin-top:8px;text-align:center;" id="mCount"></p>
+
+                    <!-- Price bar -->
+                    <div class="mc-bar-wrap" id="mBarWrap" style="display:none;">
+                        <div class="mc-bar-track">
+                            <div class="mc-bar-fill" id="mBarFill"></div>
+                            <div class="mc-bar-marker" id="mBarMarker" title="Dieses Angebot"></div>
+                        </div>
+                        <div class="mc-bar-labels">
+                            <span id="mBarMin"></span><span id="mBarMax"></span>
+                        </div>
+                    </div>
+
+                    <p class="mc-count" id="mCount"></p>
+
+                    <!-- Similar listings -->
+                    <div id="mListings" style="display:none;">
+                        <p class="mc-listings-title">Ähnliche Inserate</p>
+                        <div class="mc-listings-grid" id="mListingsGrid"></div>
+                    </div>
                 </div>
             </div>
+
+            <style>
+            .mc-wrap { padding: var(--spacing-md); }
+            .mc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.8rem; flex-wrap:wrap; gap:.4rem; }
+            .mc-scope { font-size:.7rem; color:var(--color-taupe); background:var(--color-sand); padding:3px 8px; letter-spacing:.04em; }
+            .mc-loading { display:flex; align-items:center; gap:.6rem; color:var(--color-taupe); font-size:.82rem; padding:.4rem 0; }
+
+            .mc-verdict { padding:.6rem .9rem; font-size:.85rem; font-weight:600; margin-bottom:.9rem; display:none; }
+            .mc-verdict.cheap  { background:#f0fdf4; color:#166534; border-left:3px solid #22c55e; }
+            .mc-verdict.fair   { background:var(--color-sand); color:var(--color-taupe); border-left:3px solid var(--color-border); }
+            .mc-verdict.pricey { background:#fff1f2; color:#9f1239; border-left:3px solid #f43f5e; }
+
+            .mc-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:.9rem; }
+            @media(min-width:480px){ .mc-stats { grid-template-columns:repeat(4,1fr); } }
+            .mc-stat { background:var(--color-sand); padding:.6rem .5rem; text-align:center; }
+            .mc-stat--accent { background:var(--color-black); }
+            .mc-stat--accent .mc-stat-val,
+            .mc-stat--accent .mc-stat-label { color:#fff; }
+            .mc-stat-val { font-family:var(--font-heading); font-size:1rem; color:var(--color-black); line-height:1.2; }
+            .mc-stat-label { font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; color:var(--color-taupe); margin-top:2px; }
+
+            .mc-bar-wrap { margin-bottom:.8rem; }
+            .mc-bar-track { position:relative; height:6px; background:var(--color-sand); border-radius:3px; }
+            .mc-bar-fill { height:100%; background:var(--color-border); border-radius:3px; }
+            .mc-bar-marker { position:absolute; top:-5px; width:4px; height:16px; background:var(--color-black); border-radius:2px; transform:translateX(-50%); }
+            .mc-bar-labels { display:flex; justify-content:space-between; font-size:.68rem; color:var(--color-taupe); margin-top:4px; }
+
+            .mc-count { font-size:.72rem; color:var(--color-taupe); text-align:center; margin:0 0 .6rem; }
+
+            .mc-listings-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; font-weight:600; color:var(--color-taupe); margin:.8rem 0 .5rem; padding-top:.8rem; border-top:1px solid var(--color-border); }
+            .mc-listings-grid { display:flex; flex-direction:column; gap:6px; }
+            .mc-listing-row { display:flex; align-items:center; gap:10px; padding:.5rem .6rem; background:var(--color-sand); font-size:.8rem; text-decoration:none; color:var(--color-black); transition:background .15s; }
+            .mc-listing-row:hover { background:var(--color-border); }
+            .mc-listing-price { font-family:var(--font-heading); font-size:.95rem; white-space:nowrap; }
+            .mc-listing-info { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--color-taupe); font-size:.75rem; }
+            .mc-listing-tag { font-size:.65rem; font-weight:600; letter-spacing:.05em; padding:2px 6px; background:var(--color-black); color:#fff; white-space:nowrap; }
+            .mc-listing-tag.cheaper { background:#16a34a; }
+            .mc-listing-tag.pricier { background:#dc2626; }
+            </style>
         </div>
 
         <!-- Info -->
@@ -198,39 +267,138 @@ if (gallery) {
     });
 }
 
-// Marktvergleich laden
+// Marktvergleich laden — mit exaktem Modell, Baujahr ±2, Kraftstoff
 (async function(){
-    const brand = {{ car.brand|tojson if car.brand else '""' }};
+    const brand    = {{ car.brand|tojson if car.brand else 'null' }};
+    const model    = {{ car.model|tojson if car.model else 'null' }};
+    const year     = {{ car.year or 'null' }};
+    const fuel     = {{ car.fuel_type|tojson if car.fuel_type else 'null' }};
+    const carPrice = {{ car.price or 0 }};
+    const carId    = {{ car.id }};
+
     if (!brand) { document.getElementById('marketCompare').style.display='none'; return; }
+
+    // Build scope label
+    const scopeParts = [];
+    if (model) scopeParts.push(brand + ' ' + model);
+    else        scopeParts.push(brand);
+    if (year)  scopeParts.push((year - 2) + '–' + (year + 2));
+    if (fuel)  scopeParts.push(fuel);
+    document.getElementById('mScope').textContent = scopeParts.join(' · ');
+
+    // Build query — try narrow first (brand+model+year+fuel), fall back if < 3 results
+    async function fetchStats(params) {
+        const r = await fetch('/api/markt-stats?' + new URLSearchParams(params));
+        return r.json();
+    }
+
     try {
-        const params = new URLSearchParams({brand: brand});
-        {% if car.model %}params.set('model', {{ car.model|tojson }});{% endif %}
-        const r = await fetch('/api/markt-stats?' + params);
-        const d = await r.json();
-        document.getElementById('marketLoading').style.display='none';
-        if (!d.stats || d.count < 3) { document.getElementById('marketCompare').style.display='none'; return; }
-        document.getElementById('marketData').style.display='block';
-        const fmt = n => n.toLocaleString('de-DE') + ' \u20AC';
-        document.getElementById('mAvg').textContent = fmt(d.stats.avg);
-        document.getElementById('mMin').textContent = fmt(d.stats.min);
-        document.getElementById('mMax').textContent = fmt(d.stats.max);
-        document.getElementById('mCount').textContent = 'Basierend auf ' + d.count + ' Angeboten';
-        const price = {{ car.price or 0 }};
-        const v = document.getElementById('mVerdict');
-        if (price && d.stats.avg) {
-            const diff = ((price - d.stats.avg) / d.stats.avg * 100).toFixed(0);
-            if (price < d.stats.avg * 0.85) {
-                v.style.background='#dcfce7'; v.style.color='#166534';
-                v.innerHTML = '<i class="bi bi-check-circle"></i> ' + Math.abs(diff) + '% unter Durchschnitt — G\u00fcnstiges Angebot!';
-            } else if (price > d.stats.avg * 1.15) {
-                v.style.background='#fce4ec'; v.style.color='#b71c1c';
-                v.innerHTML = '<i class="bi bi-exclamation-triangle"></i> ' + diff + '% \u00fcber Durchschnitt — Eher teuer';
-            } else {
-                v.style.background='var(--color-sand)'; v.style.color='var(--color-taupe)';
-                v.innerHTML = '<i class="bi bi-check2"></i> Fairer Marktpreis';
+        let params = { brand, exclude_id: carId };
+        if (model)  params.model     = model;
+        if (year)   { params.year_from = year - 2; params.year_to = year + 2; }
+        if (fuel)   params.fuel_type  = fuel;
+
+        let d = await fetchStats(params);
+
+        // Fallback 1: drop fuel filter if < 3
+        if (d.count < 3 && fuel) {
+            delete params.fuel_type;
+            d = await fetchStats(params);
+        }
+        // Fallback 2: widen year range to ±4
+        if (d.count < 3 && year) {
+            params.year_from = year - 4;
+            params.year_to   = year + 4;
+            d = await fetchStats(params);
+        }
+        // Fallback 3: drop year entirely
+        if (d.count < 3 && year) {
+            delete params.year_from;
+            delete params.year_to;
+            d = await fetchStats(params);
+            if (d.count >= 3) {
+                document.getElementById('mScope').textContent =
+                    (model ? brand + ' ' + model : brand) + ' · Alle Jahrgänge';
             }
         }
-    } catch(e) { document.getElementById('marketCompare').style.display='none'; }
+
+        document.getElementById('marketLoading').style.display='none';
+
+        if (!d.stats || d.count < 2) {
+            document.getElementById('marketCompare').style.display='none';
+            return;
+        }
+
+        document.getElementById('marketData').style.display='block';
+        const fmt = n => Math.round(n).toLocaleString('de-DE') + '\u00a0€';
+
+        // Stats
+        document.getElementById('mAvg').textContent  = fmt(d.stats.avg);
+        document.getElementById('mMin').textContent  = fmt(d.stats.min);
+        document.getElementById('mMax').textContent  = fmt(d.stats.max);
+        document.getElementById('mThis').textContent = carPrice ? fmt(carPrice) : '—';
+        document.getElementById('mCount').textContent =
+            'Verglichen mit ' + d.count + ' ähnlichen Angeboten in der Datenbank';
+
+        // Verdict
+        const v = document.getElementById('mVerdict');
+        if (carPrice && d.stats.avg) {
+            const pct = ((carPrice - d.stats.avg) / d.stats.avg * 100);
+            v.style.display = 'block';
+            if (pct < -12) {
+                v.className = 'mc-verdict cheap';
+                v.innerHTML = '<i class="bi bi-check-circle-fill"></i> ' +
+                    Math.abs(pct).toFixed(0) + '% unter Marktdurchschnitt — Günstiges Angebot!';
+            } else if (pct > 12) {
+                v.className = 'mc-verdict pricey';
+                v.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> ' +
+                    pct.toFixed(0) + '% über Marktdurchschnitt — Eher teuer';
+            } else {
+                v.className = 'mc-verdict fair';
+                v.innerHTML = '<i class="bi bi-check2-circle"></i> Fairer Marktpreis ' +
+                    '(' + (pct >= 0 ? '+' : '') + pct.toFixed(0) + '% ggü. Schnitt)';
+            }
+        }
+
+        // Price bar
+        if (carPrice && d.stats.min < d.stats.max) {
+            const range  = d.stats.max - d.stats.min;
+            const fillPct = Math.min(100, Math.max(0,
+                ((d.stats.avg - d.stats.min) / range * 100)));
+            const markerPct = Math.min(100, Math.max(0,
+                ((carPrice - d.stats.min) / range * 100)));
+            document.getElementById('mBarWrap').style.display = 'block';
+            document.getElementById('mBarFill').style.width  = fillPct + '%';
+            document.getElementById('mBarMarker').style.left = markerPct + '%';
+            document.getElementById('mBarMin').textContent   = fmt(d.stats.min);
+            document.getElementById('mBarMax').textContent   = fmt(d.stats.max);
+        }
+
+        // Similar listings
+        if (d.listings && d.listings.length > 0) {
+            const grid = document.getElementById('mListingsGrid');
+            const rows = d.listings.slice(0, 6);
+            grid.innerHTML = rows.map(c => {
+                const p    = c.price ? Math.round(c.price) : null;
+                const diff = (carPrice && p) ? ((p - carPrice) / carPrice * 100) : null;
+                const tagCls   = diff === null ? '' : (diff < -5 ? 'cheaper' : diff > 5 ? 'pricier' : '');
+                const tagLabel = diff === null ? '' :
+                    (Math.abs(diff) < 1 ? 'Gleich' :
+                    (diff < 0 ? Math.abs(diff).toFixed(0) + '% günstiger'
+                              : '+' + diff.toFixed(0) + '% teurer'));
+                const infoParts = [c.year, c.mileage ? c.mileage.toLocaleString('de-DE') + ' km' : null, c.fuel_type, c.location].filter(Boolean);
+                return `<a href="/car/${c.id}" class="mc-listing-row">
+                    <div class="mc-listing-price">${p ? p.toLocaleString('de-DE') + '\u00a0€' : 'Preis n/a'}</div>
+                    <div class="mc-listing-info">${infoParts.join(' · ')}</div>
+                    ${tagLabel ? `<span class="mc-listing-tag ${tagCls}">${tagLabel}</span>` : ''}
+                </a>`;
+            }).join('');
+            document.getElementById('mListings').style.display = 'block';
+        }
+
+    } catch(e) {
+        document.getElementById('marketCompare').style.display='none';
+    }
 })();
 </script>
 {% endblock %}
