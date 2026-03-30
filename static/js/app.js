@@ -83,12 +83,12 @@ function renderPriceChart(canvasId, priceData) {
             datasets: [{
                 label: 'Preis',
                 data: prices,
-                borderColor: '#CD9B77',
-                backgroundColor: 'rgba(205, 155, 119, 0.1)',
+                borderColor: '#0A0A0A',
+                backgroundColor: 'rgba(10, 10, 10, 0.06)',
                 fill: true,
                 tension: 0.3,
                 pointRadius: 4,
-                pointBackgroundColor: '#CD9B77',
+                pointBackgroundColor: '#0A0A0A',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 borderWidth: 2,
@@ -99,8 +99,8 @@ function renderPriceChart(canvasId, priceData) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#111',
-                    titleColor: '#CD9B77',
+                    backgroundColor: '#0A0A0A',
+                    titleColor: '#ffffff',
                     bodyColor: '#fff',
                     padding: 12,
                     callbacks: {
@@ -110,16 +110,16 @@ function renderPriceChart(canvasId, priceData) {
             },
             scales: {
                 y: {
-                    grid: { color: '#E6E2E1' },
+                    grid: { color: '#DEDEDE' },
                     ticks: {
                         font: { family: 'Inter', size: 11 },
-                        color: '#5E5A59',
+                        color: '#555555',
                         callback: v => v.toLocaleString('de-DE') + ' \u20AC'
                     }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { family: 'Inter', size: 11 }, color: '#5E5A59', maxTicksLimit: 8, maxRotation: 0 }
+                    ticks: { font: { family: 'Inter', size: 11 }, color: '#555555', maxTicksLimit: 8, maxRotation: 0 }
                 }
             }
         }
@@ -220,7 +220,7 @@ function renderMarketChart(canvasId, data) {
                     position: 'top',
                     labels: {
                         font: { family: 'Inter', size: 12 },
-                        color: '#5E5A59',
+                        color: '#555555',
                         boxWidth: 14,
                         padding: 18,
                         usePointStyle: true,
@@ -243,10 +243,10 @@ function renderMarketChart(canvasId, data) {
             },
             scales: {
                 y: {
-                    grid: { color: '#E6E2E1' },
+                    grid: { color: '#DEDEDE' },
                     ticks: {
                         font: { family: 'Inter', size: 11 },
-                        color: '#5E5A59',
+                        color: '#555555',
                         callback: v => v.toLocaleString('de-DE') + ' \u20AC'
                     }
                 },
@@ -254,7 +254,7 @@ function renderMarketChart(canvasId, data) {
                     grid: { display: false },
                     ticks: {
                         font: { family: 'Inter', size: 11 },
-                        color: '#5E5A59',
+                        color: '#555555',
                         maxTicksLimit: 14,
                         maxRotation: 0
                     }
@@ -303,7 +303,7 @@ function renderBrandChart(canvasId, data) {
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: true, position: 'top',
-                    labels: { font: { family: 'Inter', size: 11 }, color: '#5E5A59', boxWidth: 12, padding: 14 } },
+                    labels: { font: { family: 'Inter', size: 11 }, color: '#555555', boxWidth: 12, padding: 14 } },
                 tooltip: {
                     backgroundColor: '#111',
                     titleColor: '#CD9B77',
@@ -319,20 +319,20 @@ function renderBrandChart(canvasId, data) {
             scales: {
                 y: {
                     position: 'left',
-                    grid: { color: '#E6E2E1' },
-                    ticks: { font: { family: 'Inter', size: 11 }, color: '#5E5A59' }
+                    grid: { color: '#DEDEDE' },
+                    ticks: { font: { family: 'Inter', size: 11 }, color: '#555555' }
                 },
                 y2: {
                     position: 'right',
                     grid: { display: false },
                     ticks: {
-                        font: { family: 'Inter', size: 11 }, color: '#5E5A59',
+                        font: { family: 'Inter', size: 11 }, color: '#555555',
                         callback: v => v.toLocaleString('de-DE') + ' \u20AC'
                     }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { family: 'Inter', size: 11 }, color: '#5E5A59', maxRotation: 30 }
+                    ticks: { font: { family: 'Inter', size: 11 }, color: '#555555', maxRotation: 30 }
                 }
             }
         }
@@ -363,7 +363,7 @@ function renderFuelChart(canvasId, data) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { font: { family: 'Inter', size: 11 }, color: '#5E5A59', padding: 14, boxWidth: 12 }
+                    labels: { font: { family: 'Inter', size: 11 }, color: '#555555', padding: 14, boxWidth: 12 }
                 },
                 tooltip: {
                     backgroundColor: '#111',
@@ -407,7 +407,7 @@ function renderSegmentChart(canvasId, data) {
                 }
             },
             scales: {
-                x: { grid: { color: '#E6E2E1' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#5E5A59' } },
+                x: { grid: { color: '#E6E2E1' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#555555' } },
                 y: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 12 }, color: '#111111' } }
             }
         }
@@ -445,7 +445,7 @@ function renderPlatformChart(canvasId, data) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { font: { family: 'Inter', size: 11 }, color: '#5E5A59', padding: 14, boxWidth: 12 }
+                    labels: { font: { family: 'Inter', size: 11 }, color: '#555555', padding: 14, boxWidth: 12 }
                 },
                 tooltip: {
                     backgroundColor: '#111',
@@ -488,12 +488,12 @@ function renderVolumeChart(canvasId, data) {
             },
             scales: {
                 y: {
-                    grid: { color: '#E6E2E1' },
-                    ticks: { font: { family: 'Inter', size: 11 }, color: '#5E5A59' }
+                    grid: { color: '#DEDEDE' },
+                    ticks: { font: { family: 'Inter', size: 11 }, color: '#555555' }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { family: 'Inter', size: 10 }, color: '#5E5A59', maxTicksLimit: 14, maxRotation: 0 }
+                    ticks: { font: { family: 'Inter', size: 10 }, color: '#555555', maxTicksLimit: 14, maxRotation: 0 }
                 }
             }
         }

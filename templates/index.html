@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}SAIF AutoMarkt — Finde dein Traumauto{% endblock %}
+{% block title %}SAIF — Finde dein Traumauto{% endblock %}
 
 {% block hero %}
 <section class="sahara-hero">
     <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80');"></div>
     <div class="hero-content">
         <p class="hero-subtitle">Kleinanzeigen &middot; AutoScout24 &middot; Marktanalyse</p>
-        <h1 class="hero-title">SAIF<br><em>AutoMarkt</em></h1>
+        <h1 class="hero-title">SAIF</h1>
         <p style="color:rgba(255,255,255,.7);font-size:1.05rem;margin-top:.8rem;max-width:500px;margin-left:auto;margin-right:auto;">
             Echtzeit-Marktdaten, Preisanalysen und die besten Angebote &mdash; automatisch gesammelt, intelligent aufbereitet.
         </p>
-        <div class="divider" style="background: var(--color-bronze); margin: 1.6rem auto;"></div>
+        <div class="divider" style="background: rgba(255,255,255,0.35); margin: 1.6rem auto;"></div>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
             <a href="#search" class="btn-sahara-light">Jetzt suchen</a>
             <a href="{{ url_for('live_feed') }}" class="btn-sahara-light" style="background:transparent;border:1.5px solid rgba(255,255,255,.5);">Live Feed</a>
@@ -52,7 +52,7 @@
 @media(max-width:768px){.feature-grid{grid-template-columns:1fr;}}
 .feat-card{background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:2rem 1.5rem;text-align:center;transition:transform .2s,box-shadow .2s;}
 .feat-card:hover{transform:translateY(-3px);box-shadow:0 8px 30px rgba(0,0,0,.06);}
-.feat-icon{font-size:2rem;margin-bottom:.8rem;color:var(--color-bronze);}
+.feat-icon{font-size:2rem;margin-bottom:.8rem;color:var(--color-black);}
 .feat-title{font-family:var(--font-heading);font-size:1.15rem;margin-bottom:.4rem;}
 .feat-desc{font-size:.88rem;color:var(--color-taupe);line-height:1.5;}
 </style>
@@ -138,7 +138,7 @@
 <!-- Features -->
 <section style="padding-bottom:var(--spacing-2xl);">
     <div class="section-header">
-        <p class="section-label">Was SAIF AutoMarkt kann</p>
+        <p class="section-label">Was SAIF kann</p>
         <h2 class="section-title">Deine Vorteile</h2>
     </div>
     <div class="feature-grid">

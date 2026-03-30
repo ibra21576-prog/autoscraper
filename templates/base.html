@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AutoScraper{% endblock %}</title>
+    <title>{% block title %}SAIF{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -17,15 +17,16 @@
         <div class="header-inner">
             <!-- Logo -->
             <a class="sahara-logo" href="{{ url_for('index') }}">
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style="vertical-align:-5px;margin-right:6px;">
-                    <rect width="32" height="32" rx="6" fill="#111"/>
-                    <path d="M6 22l4-6h12l4 6H6z" fill="#CD9B77"/>
-                    <circle cx="11" cy="22" r="2.5" fill="#111" stroke="#CD9B77" stroke-width="1"/>
-                    <circle cx="21" cy="22" r="2.5" fill="#111" stroke="#CD9B77" stroke-width="1"/>
-                    <path d="M10 16l2-5h8l2 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-                    <text x="16" y="9" text-anchor="middle" fill="#CD9B77" font-size="6" font-weight="bold" font-family="Inter,sans-serif">S</text>
+                <svg width="38" height="38" viewBox="0 0 38 38" fill="none" style="vertical-align:-8px;margin-right:10px;">
+                    <!-- Background -->
+                    <rect width="38" height="38" fill="#0A0A0A"/>
+                    <!-- Thin accent lines top/bottom -->
+                    <line x1="0" y1="2" x2="38" y2="2" stroke="white" stroke-width="0.5" opacity="0.3"/>
+                    <line x1="0" y1="36" x2="38" y2="36" stroke="white" stroke-width="0.5" opacity="0.3"/>
+                    <!-- Angular S letterform -->
+                    <path d="M27 11H11V20H27V29H11" stroke="white" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
                 </svg>
-                SAIF <span class="logo-accent">AutoMarkt</span>
+                SAIF
             </a>
 
             <!-- Desktop Nav -->
@@ -89,7 +90,7 @@
     <footer class="sahara-footer">
         <div class="footer-inner">
             <div class="footer-brand">
-                SAIF <span class="logo-accent">AutoMarkt</span>
+                SAIF
             </div>
             <div class="footer-links">
                 <a href="{{ url_for('live_feed') }}">Live</a>
@@ -100,7 +101,7 @@
                 <a href="{{ url_for('alerts') }}">Alerts</a>
             </div>
             <div class="footer-copy">
-                SAIF AutoMarkt &mdash; Dein Markt&uuml;berblick
+                SAIF &mdash; Dein Markt&uuml;berblick
             </div>
         </div>
     </footer>

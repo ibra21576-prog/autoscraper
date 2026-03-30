@@ -1,18 +1,18 @@
 /* =============================================
-   AUTOSCRAPER — SAHARA THEME
-   Luxury Minimalism · Earthy Tones · Serif Type
+   SAIF — MONOCHROME THEME
+   Luxury Minimalism · Black & White · Serif Type
    ============================================= */
 
 :root {
-    /* Sahara Color Palette */
-    --color-black: #111111;
+    /* Monochrome Palette */
+    --color-black: #0A0A0A;
     --color-white: #FFFFFF;
-    --color-cream: #F5EBDF;
-    --color-sand: #EDE5DA;
-    --color-bronze: #CD9B77;
-    --color-taupe: #5E5A59;
-    --color-border: #E6E2E1;
-    --color-bg: #FAF7F4;
+    --color-cream: #F2F2F2;
+    --color-sand: #E8E8E8;
+    --color-bronze: #0A0A0A;
+    --color-taupe: #555555;
+    --color-border: #DEDEDE;
+    --color-bg: #F7F7F7;
     --color-card: #FFFFFF;
     --color-success: #4A7C59;
     --color-danger: #B44A3E;
@@ -277,8 +277,8 @@ img {
 }
 
 .mobile-nav-link:hover {
-    color: var(--color-bronze);
-    opacity: 1;
+    color: var(--color-black);
+    opacity: 0.6;
 }
 
 /* ---- HERO SECTION ---- */
@@ -315,7 +315,7 @@ img {
     font-size: 0.75rem;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: var(--color-bronze);
+    color: rgba(255, 255, 255, 0.55);
     margin-bottom: var(--spacing-md);
 }
 
@@ -329,7 +329,7 @@ img {
 
 .hero-title em {
     font-style: italic;
-    color: var(--color-bronze);
+    color: var(--color-white);
 }
 
 /* ---- BUTTONS ---- */
@@ -572,7 +572,7 @@ img {
 }
 
 .card-title-sahara a:hover {
-    color: var(--color-bronze);
+    color: var(--color-taupe);
     opacity: 1;
 }
 
@@ -719,7 +719,7 @@ img {
 
 .sahara-alert.alert-error {
     border-color: var(--color-danger);
-    background: #fdf0ee;
+    background: #fef5f5;
 }
 
 .alert-close {
