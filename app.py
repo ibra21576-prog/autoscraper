@@ -51,23 +51,50 @@ def live_feed():
 
     brand = request.args.get('brand', '').strip()
     model = request.args.get('model', '').strip()
+    price_min = request.args.get('price_min', type=int)
     price_max = request.args.get('price_max', type=int)
     year_min = request.args.get('year_min', type=int)
+    mileage_max = request.args.get('mileage_max', type=int)
+    fuel_type = request.args.get('fuel_type', '').strip()
+    platform = request.args.get('platform', '').strip()
+    sort = request.args.get('sort', 'newest')
 
     query = Car.query
     if brand:
         query = query.filter(func.lower(Car.brand) == brand.lower())
     if model:
         query = query.filter(func.lower(Car.model) == model.lower())
+    if price_min:
+        query = query.filter(Car.price >= price_min)
     if price_max:
         query = query.filter(Car.price <= price_max)
     if year_min:
         query = query.filter(Car.year >= year_min)
+    if mileage_max:
+        query = query.filter(Car.mileage <= mileage_max)
+    if fuel_type:
+        query = query.filter(func.lower(Car.fuel_type).contains(fuel_type.lower()))
+    if platform:
+        query = query.filter(Car.platform == platform)
 
-    recent_cars = query.order_by(Car.first_seen.desc()).limit(100).all()
+    if sort == 'price_asc':
+        query = query.order_by(Car.price.asc())
+    elif sort == 'price_desc':
+        query = query.order_by(Car.price.desc())
+    elif sort == 'mileage_asc':
+        query = query.order_by(Car.mileage.asc())
+    elif sort == 'year_desc':
+        query = query.order_by(Car.year.desc())
+    else:
+        query = query.order_by(Car.first_seen.desc())
+
+    recent_cars = query.limit(120).all()
     return render_template('live.html', cars=recent_cars, status=status,
                            car_data=CAR_DATA, car_brands=sorted(CAR_DATA.keys()),
-                           f_brand=brand, f_model=model, f_price_max=price_max, f_year_min=year_min)
+                           f_brand=brand, f_model=model,
+                           f_price_min=price_min, f_price_max=price_max,
+                           f_year_min=year_min, f_mileage_max=mileage_max,
+                           f_fuel_type=fuel_type, f_platform=platform, f_sort=sort)
 
 
 @app.route('/api/stream')

@@ -1223,6 +1223,88 @@ img {
     }
 }
 
+/* ---- MOBILE GLOBAL ---- */
+@media (max-width: 575px) {
+    .sahara-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .section-spacing {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    /* Header tighter on very small screens */
+    .sahara-logo {
+        font-size: 1.15rem;
+        letter-spacing: 0.08em;
+    }
+
+    .header-inner {
+        padding: 0 1rem;
+    }
+
+    /* Hero smaller on phone */
+    .sahara-hero {
+        height: 55svh;
+        min-height: 340px;
+    }
+
+    .hero-title {
+        font-size: clamp(2rem, 10vw, 3rem);
+    }
+
+    /* Search card padding */
+    .search-card {
+        padding: 1.4rem 1rem;
+    }
+
+    .search-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Sort bar stack */
+    .sort-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .6rem;
+    }
+
+    /* Detail page actions stack */
+    .detail-actions {
+        flex-direction: column;
+    }
+
+    /* Footer center on mobile */
+    .footer-inner {
+        text-align: center;
+    }
+
+    .footer-links {
+        gap: .8rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* ---- TOUCH / TAP IMPROVEMENTS ---- */
+@media (hover: none) {
+    /* Bigger touch targets */
+    .nav-link-sahara,
+    .mobile-nav-link {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-sahara,
+    .btn-sahara-outline,
+    .btn-sahara-light {
+        min-height: 48px;
+    }
+}
+
 /* Override Bootstrap defaults */
 .btn { border-radius: 0; }
 .card { border-radius: 0; border: none; }
