@@ -167,16 +167,4 @@ class AutoScout24Scraper(BaseScraper):
 
         return car
 
-    def _extract_brand_model(self, title):
-        """Marke und Modell aus dem Titel extrahieren."""
-        if not title:
-            return '', ''
-        title_lower = title.lower()
-        for brand_name in sorted(BRAND_SLUGS.keys(), key=len, reverse=True):
-            if brand_name in title_lower:
-                idx = title_lower.index(brand_name)
-                model = title[idx + len(brand_name):].strip(' -,')
-                model = model.split(',')[0].strip() if ',' in model else model.split(' ')[0].strip()
-                return brand_name.title(), model
-        parts = title.split(' ', 1)
-        return parts[0] if parts else '', parts[1].split(',')[0].strip() if len(parts) > 1 else ''
+    # _extract_brand_model inherited from BaseScraper (base.py)

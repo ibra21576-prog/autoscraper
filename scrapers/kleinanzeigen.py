@@ -170,28 +170,4 @@ class KleinanzeigenScraper(BaseScraper):
 
         return car
 
-    def _extract_brand_model(self, title):
-        """Marke und Modell aus dem Titel extrahieren."""
-        if not title:
-            return '', ''
-
-        known_brands = [
-            'mercedes-benz', 'mercedes', 'land rover', 'alfa romeo',
-            'volkswagen', 'porsche', 'mitsubishi', 'chevrolet',
-            'audi', 'bmw', 'opel', 'ford', 'toyota', 'honda', 'hyundai',
-            'kia', 'mazda', 'nissan', 'peugeot', 'renault', 'seat',
-            'skoda', 'volvo', 'fiat', 'citroen', 'mini', 'tesla',
-            'smart', 'suzuki', 'dacia', 'jaguar', 'jeep', 'subaru',
-            'lexus', 'cupra',
-        ]
-
-        title_lower = title.lower()
-        for brand_name in sorted(known_brands, key=len, reverse=True):
-            if brand_name in title_lower:
-                idx = title_lower.index(brand_name)
-                rest = title[idx + len(brand_name):].strip(' -,')
-                model_name = rest.split(',')[0].strip() if ',' in rest else rest.split(' ')[0].strip()
-                return brand_name.title(), model_name
-
-        parts = title.split(' ', 1)
-        return parts[0] if parts else '', parts[1].split(',')[0].strip() if len(parts) > 1 else ''
+    # _extract_brand_model inherited from BaseScraper (base.py)

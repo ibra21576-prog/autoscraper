@@ -484,15 +484,4 @@ class MobileDeScraper(BaseScraper):
 
         return car
 
-    def _extract_brand_model(self, title):
-        if not title:
-            return '', ''
-        title_lower = title.lower()
-        for brand_name in sorted(BRAND_IDS.keys(), key=len, reverse=True):
-            if brand_name in title_lower:
-                rest = title[title_lower.index(brand_name) + len(brand_name):].strip(' -,')
-                model = rest.split(',')[0].strip() if ',' in rest else rest.split('  ')[0].strip()
-                model = model[:40]
-                return brand_name.title(), model
-        parts = title.split(' ', 1)
-        return parts[0] if parts else '', (parts[1].split(',')[0].strip()[:40] if len(parts) > 1 else '')
+    # _extract_brand_model inherited from BaseScraper (base.py)

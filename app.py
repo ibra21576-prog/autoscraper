@@ -62,11 +62,22 @@ def live_feed():
     platform = request.args.get('platform', '').strip()
     sort = request.args.get('sort', 'newest')
 
+    from scrapers.base import normalize_brand, BRAND_NORMALIZE
+    from sqlalchemy import or_
+
     query = Car.query
     if brand:
-        query = query.filter(func.lower(Car.brand) == brand.lower())
+        # Collect all known aliases for this brand so "VW" and "Volkswagen" both match
+        canonical = normalize_brand(brand).lower()
+        aliases = list({canonical, brand.lower()} |
+                       {k for k, v in BRAND_NORMALIZE.items() if v.lower() == canonical})
+        query = query.filter(or_(*[func.lower(Car.brand) == a for a in aliases]))
     if model:
-        query = query.filter(func.lower(Car.model) == model.lower())
+        query = query.filter(
+            or_(func.lower(Car.model) == model.lower(),
+                func.lower(Car.model).contains(model.lower()),
+                func.lower(Car.title).contains(model.lower()))
+        )
     if price_min:
         query = query.filter(Car.price >= price_min)
     if price_max:

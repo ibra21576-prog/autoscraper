@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from models import db, Car, CarImage, PriceHistory
+from scrapers.base import normalize_brand
 from scrapers.mobile_de import MobileDeScraper
 from scrapers.autoscout24 import AutoScout24Scraper
 from scrapers.kleinanzeigen import KleinanzeigenScraper
@@ -54,6 +55,23 @@ def search_cars(brand=None, model=None, price_min=None, price_max=None,
         if car:
             saved_results.append(car)
 
+    # Post-filter: remove results where brand doesn't match the request
+    if brand:
+        requested_canonical = normalize_brand(brand).lower()
+        saved_results = [
+            c for c in saved_results
+            if c.brand and normalize_brand(c.brand).lower() == requested_canonical
+        ]
+
+    # Post-filter: model
+    if model:
+        model_lower = model.lower()
+        saved_results = [
+            c for c in saved_results
+            if c.model and model_lower in c.model.lower()
+            or c.title and model_lower in c.title.lower()
+        ]
+
     return saved_results
 
 
@@ -68,6 +86,8 @@ def save_or_update_car(car_data):
         if existing:
             old_price = existing.price
             existing.title = car_data.get('title', existing.title)
+            if car_data.get('brand'):
+                existing.brand = normalize_brand(car_data['brand']) or existing.brand
             existing.price = car_data.get('price', existing.price)
             existing.mileage = car_data.get('mileage', existing.mileage)
             existing.year = car_data.get('year', existing.year)
@@ -93,7 +113,7 @@ def save_or_update_car(car_data):
                 platform=car_data.get('platform'),
                 external_id=car_data.get('external_id'),
                 title=car_data.get('title'),
-                brand=car_data.get('brand'),
+                brand=normalize_brand(car_data.get('brand', '')) or None,
                 model=car_data.get('model'),
                 price=car_data.get('price'),
                 mileage=car_data.get('mileage'),
