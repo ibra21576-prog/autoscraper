@@ -21,12 +21,61 @@
         </div>
     </div>
 
-    <!-- Filter -->
+    <!-- Auto-Filter -->
+    <style>
+    .live-filter{background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;}
+    .lf-row{display:flex;gap:.8rem;flex-wrap:wrap;align-items:end;}
+    .lf-group{flex:1;min-width:140px;}
+    .lf-group label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);margin-bottom:.25rem;}
+    .lf-group select,.lf-group input{width:100%;padding:.45rem .6rem;border:1px solid var(--color-border);border-radius:5px;font-size:.88rem;font-family:var(--font-body);background:#fff;}
+    .lf-group select:focus,.lf-group input:focus{outline:none;border-color:#111;}
+    .lf-btn{background:#111;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:5px;font-size:.88rem;cursor:pointer;font-family:var(--font-body);font-weight:500;height:36px;}
+    .lf-btn:hover{background:#333;}
+    .lf-reset{background:transparent;color:var(--color-taupe);border:1px solid var(--color-border);padding:.5rem 1rem;border-radius:5px;font-size:.85rem;cursor:pointer;height:36px;}
+    .lf-reset:hover{border-color:#111;color:#111;}
+    .lf-active{background:var(--color-sand);border-color:var(--color-bronze);}
+    </style>
+    <div class="live-filter {% if f_brand %}lf-active{% endif %}">
+        <form method="GET" action="{{ url_for('live_feed') }}">
+            <div class="lf-row">
+                <div class="lf-group">
+                    <label>Marke</label>
+                    <select name="brand" id="lfBrand" onchange="updateLfModels()">
+                        <option value="">Alle Marken</option>
+                        {% for b in car_brands %}
+                        <option value="{{ b }}" {% if f_brand == b %}selected{% endif %}>{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="lf-group">
+                    <label>Modell</label>
+                    <select name="model" id="lfModel">
+                        <option value="">Alle Modelle</option>
+                    </select>
+                </div>
+                <div class="lf-group" style="min-width:120px;">
+                    <label>Max. Preis</label>
+                    <input type="number" name="price_max" placeholder="z.B. 15000" value="{{ f_price_max or '' }}">
+                </div>
+                <div class="lf-group" style="min-width:110px;">
+                    <label>Baujahr ab</label>
+                    <input type="number" name="year_min" placeholder="z.B. 2018" value="{{ f_year_min or '' }}">
+                </div>
+                <div style="display:flex;gap:.5rem;">
+                    <button type="submit" class="lf-btn"><i class="bi bi-search"></i> Filtern</button>
+                    {% if f_brand or f_model or f_price_max or f_year_min %}
+                    <a href="{{ url_for('live_feed') }}" class="lf-reset"><i class="bi bi-x-lg"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Plattform Filter -->
     <div class="filter-bar">
         <button class="filter-btn active" data-platform="all">Alle</button>
         <button class="filter-btn" data-platform="kleinanzeigen">Kleinanzeigen</button>
         <button class="filter-btn" data-platform="autoscout24">AutoScout24</button>
-        <button class="filter-btn" data-platform="mobile_de">Mobile.de</button>
     </div>
 
     <!-- Feed -->
@@ -98,8 +147,13 @@
     {% if not cars %}
     <div class="empty-state" id="emptyState">
         <div class="sahara-spinner" style="width:32px;height:32px;margin-bottom:var(--spacing-md);"></div>
+        {% if f_brand %}
+        <h3>Keine {{ f_brand }}{% if f_model %} {{ f_model }}{% endif %} gefunden</h3>
+        <p>Versuche andere Filter oder <a href="{{ url_for('live_feed') }}" style="color:var(--color-bronze);text-decoration:underline;">zeige alle Autos</a></p>
+        {% else %}
         <h3>Warte auf neue Inserate...</h3>
-        <p>Der Live-Scraper durchsucht Mobile.de, AutoScout24, Kleinanzeigen, pkw.de, Autohero & heycar</p>
+        <p>Neue Fahrzeuge werden automatisch angezeigt</p>
+        {% endif %}
     </div>
     {% endif %}
 </section>
@@ -227,5 +281,22 @@ setInterval(async () => {
         if (l) l.textContent = s.last_scrape || '';
     } catch(e) {}
 }, 5000);
+
+// Dynamische Modell-Auswahl
+const CAR_DATA = {{ car_data | tojson }};
+function updateLfModels() {
+    const brand = document.getElementById('lfBrand').value;
+    const sel = document.getElementById('lfModel');
+    sel.innerHTML = '<option value="">Alle Modelle</option>';
+    if (brand && CAR_DATA[brand]) {
+        CAR_DATA[brand].forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m; opt.textContent = m;
+            if (m === '{{ f_model or "" }}') opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+}
+updateLfModels();
 </script>
 {% endblock %}

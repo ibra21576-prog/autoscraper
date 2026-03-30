@@ -43,11 +43,31 @@ def index():
 
 @app.route('/live')
 def live_feed():
-    """Live-Feed - neue Autos in Echtzeit."""
+    """Live-Feed - neue Autos in Echtzeit, mit optionalem Marke/Modell-Filter."""
     from services.live_scraper import get_scraper_status
+    from sqlalchemy import func
+    from services.playwright_scraper import CAR_DATA
     status = get_scraper_status()
-    recent_cars = Car.query.order_by(Car.first_seen.desc()).limit(50).all()
-    return render_template('live.html', cars=recent_cars, status=status)
+
+    brand = request.args.get('brand', '').strip()
+    model = request.args.get('model', '').strip()
+    price_max = request.args.get('price_max', type=int)
+    year_min = request.args.get('year_min', type=int)
+
+    query = Car.query
+    if brand:
+        query = query.filter(func.lower(Car.brand) == brand.lower())
+    if model:
+        query = query.filter(func.lower(Car.model) == model.lower())
+    if price_max:
+        query = query.filter(Car.price <= price_max)
+    if year_min:
+        query = query.filter(Car.year >= year_min)
+
+    recent_cars = query.order_by(Car.first_seen.desc()).limit(100).all()
+    return render_template('live.html', cars=recent_cars, status=status,
+                           car_data=CAR_DATA, car_brands=sorted(CAR_DATA.keys()),
+                           f_brand=brand, f_model=model, f_price_max=price_max, f_year_min=year_min)
 
 
 @app.route('/api/stream')
