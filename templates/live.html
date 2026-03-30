@@ -92,19 +92,43 @@
 
 {% block scripts %}
 <script>
-// SSE Live-Stream
-const evtSource = new EventSource('/api/stream');
 let activeFilter = 'all';
+let lastCarId = {{ cars[0].id if cars else 0 }};
 
-evtSource.onmessage = function(event) {
-    const car = JSON.parse(event.data);
-    addCarToFeed(car);
+// SSE für lokale Nutzung (optional, fällt graceful zurück)
+try {
+    const evtSource = new EventSource('/api/stream');
+    evtSource.onmessage = function(event) {
+        const car = JSON.parse(event.data);
+        if (car.id > lastCarId) lastCarId = car.id;
+        addCarToFeed(car);
+        updateCount(1);
+    };
+    evtSource.onerror = function() { evtSource.close(); };
+} catch(e) {}
+
+// Auto-Polling: alle 15s neue Autos aus DB holen (funktioniert auch auf Render)
+setInterval(async () => {
+    try {
+        const res = await fetch('/api/recent?after_id=' + lastCarId + '&limit=20');
+        const cars = await res.json();
+        if (cars.length > 0) {
+            cars.reverse().forEach(car => {
+                addCarToFeed(car);
+                if (car.id > lastCarId) lastCarId = car.id;
+            });
+            updateCount(cars.length);
+        }
+    } catch(e) {}
+}, 15000);
+
+function updateCount(add) {
     const countEl = document.getElementById('totalCount');
     const current = parseInt(countEl.textContent) || 0;
-    countEl.textContent = (current + 1) + ' gefunden';
+    countEl.textContent = (current + add) + ' gefunden';
     const empty = document.getElementById('emptyState');
     if (empty) empty.remove();
-};
+}
 
 function addCarToFeed(car) {
     const feed = document.getElementById('liveFeed');
