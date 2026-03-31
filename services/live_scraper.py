@@ -72,11 +72,12 @@ def live_scraper_loop(app):
                                 db.session.commit()
                             else:
                                 # Neues Auto gefunden
+                                from scrapers.base import normalize_brand
                                 car = Car(
                                     platform=car_data.get('platform'),
                                     external_id=car_data.get('external_id'),
                                     title=car_data.get('title'),
-                                    brand=car_data.get('brand'),
+                                    brand=normalize_brand(car_data.get('brand', '')) or None,
                                     model=car_data.get('model'),
                                     price=car_data.get('price'),
                                     mileage=car_data.get('mileage'),

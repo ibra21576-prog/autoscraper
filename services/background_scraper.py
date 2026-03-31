@@ -64,11 +64,12 @@ def _store_results(results, brand, model, app):
 
                     db.session.commit()
                 else:
+                    from scrapers.base import normalize_brand
                     car = Car(
                         platform=platform,
                         external_id=ext_id,
                         title=item.get('title', 'Unbekannt'),
-                        brand=brand,
+                        brand=normalize_brand(brand) if brand else None,
                         model=model or None,
                         price=item.get('price'),
                         mileage=item.get('km'),

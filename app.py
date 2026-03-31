@@ -31,6 +31,42 @@ mail = Mail(app)
 # DB erstellen (bestehende Tabellen bleiben erhalten)
 with app.app_context():
     db.create_all()
+    # Einmalige Bereinigung: alle Brand-Werte in der DB normalisieren
+    try:
+        from scrapers.base import normalize_brand, BRAND_NORMALIZE
+        from sqlalchemy import text
+        dirty = Car.query.filter(Car.brand.isnot(None)).all()
+        changed = 0
+        for car in dirty:
+            raw = (car.brand or '').strip()
+            if not raw:
+                car.brand = None
+                changed += 1
+                continue
+            norm = normalize_brand(raw)
+            if norm != raw:
+                car.brand = norm
+                changed += 1
+        if changed:
+            db.session.commit()
+            logger.info(f"Brand-Normalisierung: {changed} Einträge bereinigt")
+        # Zusätzlich: Autos mit NULL brand aus dem Titel rekonstruieren
+        from scrapers.base import BaseScraper
+        _bs = BaseScraper.__new__(BaseScraper)
+        null_brand_cars = Car.query.filter(Car.brand.is_(None), Car.title.isnot(None)).all()
+        fixed = 0
+        for car in null_brand_cars:
+            b, m = _bs._extract_brand_model(car.title or '')
+            if b:
+                car.brand = b
+                if not car.model and m:
+                    car.model = m
+                fixed += 1
+        if fixed:
+            db.session.commit()
+            logger.info(f"Brand aus Titel rekonstruiert: {fixed} Einträge")
+    except Exception as e:
+        logger.warning(f"Brand-Bereinigung fehlgeschlagen: {e}")
 
 
 # --- ROUTEN ---
@@ -63,19 +99,26 @@ def live_feed():
     sort = request.args.get('sort', 'newest')
 
     from scrapers.base import normalize_brand, BRAND_NORMALIZE
-    from sqlalchemy import or_
+    from sqlalchemy import or_, and_
 
     query = Car.query
     if brand:
-        # Collect all known aliases for this brand so "VW" and "Volkswagen" both match
-        canonical = normalize_brand(brand).lower()
-        aliases = list({canonical, brand.lower()} |
-                       {k for k, v in BRAND_NORMALIZE.items() if v.lower() == canonical})
-        query = query.filter(or_(*[func.lower(Car.brand) == a for a in aliases]))
+        canonical = normalize_brand(brand)
+        # Alle bekannten Schreibweisen dieser Marke (VW, Volkswagen, volkswagen …)
+        aliases = {canonical.lower(), brand.strip().lower()} | \
+                  {k.lower() for k, v in BRAND_NORMALIZE.items()
+                   if v.lower() == canonical.lower()}
+        # Exakter Match auf brand-Feld (alle Aliases)
+        brand_match = or_(*[func.lower(func.trim(Car.brand)) == a for a in aliases])
+        # Fallback: brand=NULL, aber Marke steht im Titel
+        title_fallback = and_(
+            Car.brand.is_(None),
+            func.lower(Car.title).like(f'%{canonical.lower()}%')
+        )
+        query = query.filter(or_(brand_match, title_fallback))
     if model:
         query = query.filter(
-            or_(func.lower(Car.model) == model.lower(),
-                func.lower(Car.model).contains(model.lower()),
+            or_(func.lower(Car.model).contains(model.lower()),
                 func.lower(Car.title).contains(model.lower()))
         )
     if price_min:
