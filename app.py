@@ -31,42 +31,51 @@ mail = Mail(app)
 # DB erstellen (bestehende Tabellen bleiben erhalten)
 with app.app_context():
     db.create_all()
-    # Einmalige Bereinigung: alle Brand-Werte in der DB normalisieren
-    try:
-        from scrapers.base import normalize_brand, BRAND_NORMALIZE
-        from sqlalchemy import text
-        dirty = Car.query.filter(Car.brand.isnot(None)).all()
-        changed = 0
-        for car in dirty:
-            raw = (car.brand or '').strip()
-            if not raw:
-                car.brand = None
-                changed += 1
-                continue
-            norm = normalize_brand(raw)
-            if norm != raw:
-                car.brand = norm
-                changed += 1
-        if changed:
-            db.session.commit()
-            logger.info(f"Brand-Normalisierung: {changed} Einträge bereinigt")
-        # Zusätzlich: Autos mit NULL brand aus dem Titel rekonstruieren
-        from scrapers.base import BaseScraper
-        _bs = BaseScraper.__new__(BaseScraper)
-        null_brand_cars = Car.query.filter(Car.brand.is_(None), Car.title.isnot(None)).all()
-        fixed = 0
-        for car in null_brand_cars:
-            b, m = _bs._extract_brand_model(car.title or '')
-            if b:
-                car.brand = b
-                if not car.model and m:
-                    car.model = m
-                fixed += 1
-        if fixed:
-            db.session.commit()
-            logger.info(f"Brand aus Titel rekonstruiert: {fixed} Einträge")
-    except Exception as e:
-        logger.warning(f"Brand-Bereinigung fehlgeschlagen: {e}")
+
+
+def _cleanup_brands_bg():
+    """Brand-Normalisierung im Hintergrund — blockiert nicht den Start."""
+    import threading, time
+    def _run():
+        time.sleep(5)  # kurz warten bis App bereit
+        with app.app_context():
+            try:
+                from scrapers.base import normalize_brand, BaseScraper
+                # 1) Normalisiere bekannte aber falsch geschriebene Brands
+                dirty = Car.query.filter(Car.brand.isnot(None)).all()
+                changed = 0
+                for car in dirty:
+                    raw = (car.brand or '').strip()
+                    if not raw:
+                        car.brand = None
+                        changed += 1
+                        continue
+                    norm = normalize_brand(raw)
+                    if norm != raw:
+                        car.brand = norm
+                        changed += 1
+                if changed:
+                    db.session.commit()
+                    logger.info(f"Brand-Normalisierung: {changed} Einträge")
+                # 2) Brand aus Titel rekonstruieren wo brand=NULL
+                _bs = BaseScraper.__new__(BaseScraper)
+                null_cars = Car.query.filter(Car.brand.is_(None), Car.title.isnot(None)).all()
+                fixed = 0
+                for car in null_cars:
+                    b, m = _bs._extract_brand_model(car.title or '')
+                    if b:
+                        car.brand = b
+                        if not car.model and m:
+                            car.model = m
+                        fixed += 1
+                if fixed:
+                    db.session.commit()
+                    logger.info(f"Brand aus Titel: {fixed} Einträge")
+            except Exception as e:
+                logger.warning(f"Brand-Bereinigung Fehler: {e}")
+    threading.Thread(target=_run, daemon=True).start()
+
+_cleanup_brands_bg()
 
 
 # --- ROUTEN ---
