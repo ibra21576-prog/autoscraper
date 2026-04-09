@@ -13,18 +13,15 @@
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
-    <!-- Sahara-Style Header -->
+    <!-- Header -->
     <header class="sahara-header">
         <div class="header-inner">
             <!-- Logo -->
             <a class="sahara-logo" href="{{ url_for('index') }}">
                 <svg width="38" height="38" viewBox="0 0 38 38" fill="none" style="vertical-align:-8px;margin-right:10px;">
-                    <!-- Background -->
                     <rect width="38" height="38" fill="#0A0A0A"/>
-                    <!-- Thin accent lines top/bottom -->
                     <line x1="0" y1="2" x2="38" y2="2" stroke="white" stroke-width="0.5" opacity="0.3"/>
                     <line x1="0" y1="36" x2="38" y2="36" stroke="white" stroke-width="0.5" opacity="0.3"/>
-                    <!-- Angular S letterform -->
                     <path d="M27 11H11V20H27V29H11" stroke="white" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
                 </svg>
                 SAIF
@@ -36,10 +33,15 @@
                     <span class="live-indicator"></span>LIVE
                 </a>
                 <a href="{{ url_for('index') }}" class="nav-link-sahara {% if request.endpoint == 'index' or request.endpoint == 'search' %}active{% endif %}">SUCHE</a>
-                <a href="{{ url_for('market') }}" class="nav-link-sahara {% if request.endpoint == 'market' %}active{% endif %}">MARKT</a>
                 <a href="{{ url_for('marktanalyse') }}" class="nav-link-sahara {% if request.endpoint == 'marktanalyse' %}active{% endif %}">ANALYSE</a>
                 <a href="{{ url_for('tracked') }}" class="nav-link-sahara {% if request.endpoint == 'tracked' %}active{% endif %}">TRACKING</a>
                 <a href="{{ url_for('alerts') }}" class="nav-link-sahara {% if request.endpoint == 'alerts' %}active{% endif %}">ALERTS</a>
+                {% if current_user %}
+                <span class="nav-link-sahara" style="color:rgba(255,255,255,.5);cursor:default;">{{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="nav-link-sahara" style="border:1px solid rgba(255,255,255,.25);padding:.3rem .8rem;border-radius:4px;font-size:.7rem;">LOGOUT</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="nav-link-sahara {% if request.endpoint in ['login','register'] %}active{% endif %}" style="border:1px solid rgba(255,255,255,.3);padding:.35rem .9rem;border-radius:4px;">ANMELDEN</a>
+                {% endif %}
             </nav>
 
             <!-- Mobile Toggle -->
@@ -57,10 +59,15 @@
                     <span class="live-indicator"></span>LIVE FEED
                 </a>
                 <a href="{{ url_for('index') }}" class="mobile-nav-link">SUCHE</a>
-                <a href="{{ url_for('market') }}" class="mobile-nav-link">MARKTANALYSE</a>
                 <a href="{{ url_for('marktanalyse') }}" class="mobile-nav-link">ANALYSE</a>
                 <a href="{{ url_for('tracked') }}" class="mobile-nav-link">TRACKING</a>
                 <a href="{{ url_for('alerts') }}" class="mobile-nav-link">ALERTS</a>
+                {% if current_user %}
+                <a href="{{ url_for('logout') }}" class="mobile-nav-link" style="color:#999;">{{ current_user.username }} — Logout</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="mobile-nav-link">ANMELDEN</a>
+                <a href="{{ url_for('register') }}" class="mobile-nav-link" style="color:#888;">REGISTRIEREN</a>
+                {% endif %}
             </nav>
         </div>
     </header>
@@ -87,7 +94,7 @@
         </div>
     </main>
 
-    <!-- Sahara Footer -->
+    <!-- Footer -->
     <footer class="sahara-footer">
         <div class="footer-inner">
             <div class="footer-brand">
@@ -96,7 +103,6 @@
             <div class="footer-links">
                 <a href="{{ url_for('live_feed') }}">Live</a>
                 <a href="{{ url_for('index') }}">Suche</a>
-                <a href="{{ url_for('market') }}">Markt</a>
                 <a href="{{ url_for('marktanalyse') }}">Analyse</a>
                 <a href="{{ url_for('tracked') }}">Tracking</a>
                 <a href="{{ url_for('alerts') }}">Alerts</a>

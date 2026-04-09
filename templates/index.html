@@ -3,17 +3,18 @@
 
 {% block hero %}
 <section class="sahara-hero">
-    <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80');"></div>
-    <div class="hero-content">
-        <p class="hero-subtitle">Kleinanzeigen &middot; AutoScout24 &middot; Marktanalyse</p>
-        <h1 class="hero-title">SAIF</h1>
-        <p style="color:rgba(255,255,255,.7);font-size:1.05rem;margin-top:.8rem;max-width:500px;margin-left:auto;margin-right:auto;">
-            Echtzeit-Marktdaten, Preisanalysen und die besten Angebote &mdash; automatisch gesammelt, intelligent aufbereitet.
+    <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1920&q=80');"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,0,0,.75) 0%,rgba(0,0,0,.45) 100%);z-index:1;"></div>
+    <div class="hero-content" style="z-index:2;">
+        <p class="hero-subtitle" style="letter-spacing:.4em;">AUTOMARKT &middot; ANALYSE &middot; ECHTZEIT</p>
+        <h1 class="hero-title" style="font-size:clamp(3rem,8vw,6rem);letter-spacing:.1em;">SAIF</h1>
+        <p style="color:rgba(255,255,255,.65);font-size:1rem;margin-top:.8rem;max-width:480px;margin-left:auto;margin-right:auto;font-weight:300;letter-spacing:.02em;">
+            Echtzeit-Marktdaten &middot; Preisanalysen &middot; Beste Angebote
         </p>
-        <div class="divider" style="background: rgba(255,255,255,0.35); margin: 1.6rem auto;"></div>
+        <div style="width:40px;height:1px;background:rgba(255,255,255,.4);margin:1.8rem auto;"></div>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-            <a href="#search" class="btn-sahara-light">Jetzt suchen</a>
-            <a href="{{ url_for('live_feed') }}" class="btn-sahara-light" style="background:transparent;border:1.5px solid rgba(255,255,255,.5);">Live Feed</a>
+            <a href="#search" class="btn-sahara-light">SUCHE STARTEN</a>
+            <a href="{{ url_for('live_feed') }}" class="btn-sahara-light" style="background:transparent;border:1px solid rgba(255,255,255,.4);color:rgba(255,255,255,.85);">LIVE FEED</a>
         </div>
     </div>
 </section>
