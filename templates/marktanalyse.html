@@ -77,7 +77,9 @@
 
     <!-- Filter -->
     <div class="ma-filters">
-        <div class="ma-row">
+        <!-- Zeile 1: Fahrzeug -->
+        <p style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#aaa;margin:0 0 .8rem;">Fahrzeug</p>
+        <div class="ma-row" style="margin-bottom:1rem;">
             <div>
                 <label>Marke</label>
                 <select id="fBrand" onchange="updateModels()">
@@ -93,6 +95,37 @@
                     <option value="">Alle Modelle</option>
                 </select>
             </div>
+            <div>
+                <label>Variante / Freitext <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#aaa;">(z.B. GTC, 1.4 Turbo)</span></label>
+                <input type="text" id="fVariant" placeholder="z.B. Sports Tourer, AMG, xDrive...">
+            </div>
+        </div>
+
+        <!-- Zeile 2: Baujahr -->
+        <p style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#aaa;margin:0 0 .8rem;">Baujahr</p>
+        <div class="ma-row" style="margin-bottom:1rem;">
+            <div>
+                <label>Exaktes Jahr</label>
+                <select id="fYearExact" onchange="toggleYearRange()">
+                    <option value="">Kein exaktes Jahr</option>
+                    {% for y in range(2026, 1989, -1) %}
+                    <option value="{{ y }}">{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="wrapYearFrom">
+                <label>Baujahr von</label>
+                <input type="number" id="fYearFrom" placeholder="z.B. 2015" min="1990" max="2026">
+            </div>
+            <div id="wrapYearTo">
+                <label>Baujahr bis</label>
+                <input type="number" id="fYearTo" placeholder="z.B. 2020" min="1990" max="2026">
+            </div>
+        </div>
+
+        <!-- Zeile 3: Technisches + Preis -->
+        <p style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#aaa;margin:0 0 .8rem;">Details & Preis</p>
+        <div class="ma-row">
             <div>
                 <label>Kraftstoff</label>
                 <select id="fFuel">
@@ -115,6 +148,10 @@
                 </select>
             </div>
             <div>
+                <label>Max. Kilometer</label>
+                <input type="number" id="fKmMax" placeholder="z.B. 150000" step="10000">
+            </div>
+            <div>
                 <label>Preis von (€)</label>
                 <input type="number" id="fPriceMin" placeholder="z.B. 5000" step="500" min="0">
             </div>
@@ -122,22 +159,15 @@
                 <label>Preis bis (€)</label>
                 <input type="number" id="fPriceMax" placeholder="z.B. 30000" step="500" min="0">
             </div>
-            <div>
-                <label>Baujahr von</label>
-                <input type="number" id="fYearFrom" placeholder="z.B. 2018" min="1990" max="2026">
-            </div>
-            <div>
-                <label>Baujahr bis</label>
-                <input type="number" id="fYearTo" placeholder="z.B. 2024" min="1990" max="2026">
-            </div>
-            <div>
-                <label>Max. Kilometer</label>
-                <input type="number" id="fKmMax" placeholder="z.B. 150000" step="10000">
-            </div>
             <div style="display:flex;align-items:flex-end;">
                 <button class="ma-btn" onclick="loadStats()" id="analyzeBtn" style="width:100%;">Analysieren</button>
             </div>
         </div>
+    </div>
+
+    <!-- Aktive Filter-Zusammenfassung -->
+    <div id="filterSummary" style="display:none;margin-bottom:1.2rem;padding:.7rem 1rem;background:#0A0A0A;color:#fff;border-radius:6px;font-family:Inter,sans-serif;font-size:.85rem;letter-spacing:.03em;">
+        <strong>Suche:</strong> <span id="filterSummaryText"></span>
     </div>
 
     <!-- Loading -->
@@ -217,20 +247,51 @@ function fmtKm(n) {
     return n ? n.toLocaleString('de-DE') + ' km' : '–';
 }
 
+function toggleYearRange() {
+    const exact = document.getElementById('fYearExact').value;
+    const disabled = !!exact;
+    document.getElementById('fYearFrom').disabled = disabled;
+    document.getElementById('fYearTo').disabled = disabled;
+    document.getElementById('wrapYearFrom').style.opacity = disabled ? '.35' : '1';
+    document.getElementById('wrapYearTo').style.opacity = disabled ? '.35' : '1';
+}
+
+function buildFilterSummary(brand, model, variant, yearExact, yf, yt, fuel, transmission, km, priceMin, priceMax) {
+    const parts = [];
+    if (brand) parts.push(brand);
+    if (model) parts.push(model);
+    if (variant) parts.push(`"${variant}"`);
+    if (yearExact) parts.push(`Bj. ${yearExact}`);
+    else if (yf && yt) parts.push(`${yf}–${yt}`);
+    else if (yf) parts.push(`ab ${yf}`);
+    else if (yt) parts.push(`bis ${yt}`);
+    if (fuel) parts.push(fuel.charAt(0).toUpperCase() + fuel.slice(1));
+    if (transmission) parts.push(transmission.charAt(0).toUpperCase() + transmission.slice(1));
+    if (km) parts.push(`max. ${parseInt(km).toLocaleString('de-DE')} km`);
+    if (priceMin && priceMax) parts.push(`${parseInt(priceMin).toLocaleString('de-DE')}–${parseInt(priceMax).toLocaleString('de-DE')} €`);
+    else if (priceMin) parts.push(`ab ${parseInt(priceMin).toLocaleString('de-DE')} €`);
+    else if (priceMax) parts.push(`bis ${parseInt(priceMax).toLocaleString('de-DE')} €`);
+    return parts.join(' · ');
+}
+
 async function loadStats() {
     const params = new URLSearchParams();
     const brand = document.getElementById('fBrand').value;
     const model = document.getElementById('fModel').value;
+    const variant = document.getElementById('fVariant').value.trim();
+    const yearExact = document.getElementById('fYearExact').value;
     const fuel = document.getElementById('fFuel').value;
     const transmission = document.getElementById('fTransmission').value;
     const priceMin = document.getElementById('fPriceMin').value;
     const priceMax = document.getElementById('fPriceMax').value;
-    const yf = document.getElementById('fYearFrom').value;
-    const yt = document.getElementById('fYearTo').value;
+    const yf = yearExact ? '' : document.getElementById('fYearFrom').value;
+    const yt = yearExact ? '' : document.getElementById('fYearTo').value;
     const km = document.getElementById('fKmMax').value;
 
     if (brand) params.set('brand', brand);
     if (model) params.set('model', model);
+    if (variant) params.set('variant', variant);
+    if (yearExact) params.set('year_exact', yearExact);
     if (fuel) params.set('fuel_type', fuel);
     if (transmission) params.set('transmission', transmission);
     if (priceMin) params.set('price_min', priceMin);
@@ -238,6 +299,15 @@ async function loadStats() {
     if (yf) params.set('year_from', yf);
     if (yt) params.set('year_to', yt);
     if (km) params.set('km_max', km);
+
+    // Filter-Zusammenfassung anzeigen
+    const summary = buildFilterSummary(brand, model, variant, yearExact, yf, yt, fuel, transmission, km, priceMin, priceMax);
+    if (summary) {
+        document.getElementById('filterSummaryText').textContent = summary;
+        document.getElementById('filterSummary').style.display = 'block';
+    } else {
+        document.getElementById('filterSummary').style.display = 'none';
+    }
 
     document.getElementById('loading').style.display = 'block';
     document.getElementById('results').style.display = 'none';
