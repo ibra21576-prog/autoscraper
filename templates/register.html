@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Registrieren — SAIF{% endblock %}
+
+{% block content %}
+<style>
+.auth-wrap {
+    max-width: 440px;
+    margin: 4rem auto;
+    padding: 0 1rem;
+}
+.auth-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 2.5rem 2rem;
+}
+.auth-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: #0A0A0A;
+    margin-bottom: .3rem;
+    text-align: center;
+}
+.auth-sub {
+    text-align: center;
+    color: #888;
+    font-size: .9rem;
+    font-family: Inter, sans-serif;
+    margin-bottom: 2rem;
+}
+.auth-label {
+    display: block;
+    font-family: Inter, sans-serif;
+    font-size: .78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #555;
+    margin-bottom: .35rem;
+}
+.auth-input {
+    width: 100%;
+    padding: .7rem .9rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: .97rem;
+    font-family: Inter, sans-serif;
+    color: #111;
+    background: #fafafa;
+    transition: border-color .2s;
+    margin-bottom: 1.1rem;
+}
+.auth-input:focus {
+    outline: none;
+    border-color: #0A0A0A;
+    background: #fff;
+}
+.auth-btn {
+    width: 100%;
+    background: #0A0A0A;
+    color: #fff;
+    border: none;
+    padding: .85rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: Inter, sans-serif;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s;
+    margin-top: .5rem;
+}
+.auth-btn:hover { background: #333; }
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: .9rem;
+    color: #666;
+    font-family: Inter, sans-serif;
+}
+.auth-footer a {
+    color: #0A0A0A;
+    font-weight: 600;
+    text-decoration: underline;
+}
+.password-hint {
+    font-size: .78rem;
+    color: #999;
+    margin-top: -.7rem;
+    margin-bottom: 1.1rem;
+    font-family: Inter, sans-serif;
+}
+</style>
+
+<div class="auth-wrap">
+    <div class="auth-card">
+        <div class="auth-title">Registrieren</div>
+        <div class="auth-sub">Kostenloses Konto erstellen</div>
+
+        <form method="POST" action="{{ url_for('register') }}">
+            <label class="auth-label">Benutzername</label>
+            <input type="text" name="username" class="auth-input" placeholder="z.B. Max123" required autocomplete="username" minlength="3" maxlength="80">
+
+            <label class="auth-label">E-Mail</label>
+            <input type="email" name="email" class="auth-input" placeholder="deine@email.de" required autocomplete="email">
+
+            <label class="auth-label">Passwort</label>
+            <input type="password" name="password" class="auth-input" placeholder="Mindestens 6 Zeichen" required autocomplete="new-password" minlength="6">
+            <p class="password-hint">Mind. 6 Zeichen</p>
+
+            <label class="auth-label">Passwort wiederholen</label>
+            <input type="password" name="password2" class="auth-input" placeholder="Passwort bestätigen" required autocomplete="new-password">
+
+            <button type="submit" class="auth-btn">Konto erstellen</button>
+        </form>
+
+        <div class="auth-footer">
+            Bereits registriert?
+            <a href="{{ url_for('login') }}">Einloggen</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

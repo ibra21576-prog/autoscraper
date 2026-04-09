@@ -2,7 +2,7 @@ import json
 import os
 import time
 import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, session
 from flask_mail import Mail
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from config import Config
-from models import db, Car
+from models import db, Car, User
 
 # Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -78,6 +78,85 @@ def _cleanup_brands_bg():
 _cleanup_brands_bg()
 
 
+# --- AUTH CONTEXT PROCESSOR ---
+
+@app.context_processor
+def inject_user():
+    """Macht current_user in allen Templates verfügbar."""
+    user_id = session.get('user_id')
+    current_user = None
+    if user_id:
+        current_user = User.query.get(user_id)
+    return dict(current_user=current_user)
+
+
+# --- AUTH ROUTEN ---
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if session.get('user_id'):
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        password2 = request.form.get('password2', '')
+
+        if not username or not email or not password:
+            flash('Bitte alle Felder ausfüllen.', 'error')
+            return render_template('register.html')
+        if len(password) < 6:
+            flash('Passwort muss mindestens 6 Zeichen lang sein.', 'error')
+            return render_template('register.html')
+        if password != password2:
+            flash('Passwörter stimmen nicht überein.', 'error')
+            return render_template('register.html')
+        if User.query.filter_by(email=email).first():
+            flash('Diese E-Mail-Adresse ist bereits registriert.', 'error')
+            return render_template('register.html')
+        if User.query.filter_by(username=username).first():
+            flash('Dieser Benutzername ist bereits vergeben.', 'error')
+            return render_template('register.html')
+
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+        session['user_id'] = user.id
+        flash(f'Willkommen, {user.username}!', 'success')
+        return redirect(url_for('index'))
+
+    return render_template('register.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('user_id'):
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            flash(f'Willkommen zurück, {user.username}!', 'success')
+            next_url = request.args.get('next') or url_for('index')
+            return redirect(next_url)
+        else:
+            flash('E-Mail oder Passwort ist falsch.', 'error')
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash('Du wurdest abgemeldet.', 'info')
+    return redirect(url_for('index'))
+
+
 # --- ROUTEN ---
 
 @app.route('/')
@@ -142,6 +221,18 @@ def live_feed():
         query = query.filter(func.lower(Car.fuel_type).contains(fuel_type.lower()))
     if platform:
         query = query.filter(Car.platform == platform)
+
+    # "Suche"-Inserate (Gesuche/Wanted Ads) herausfiltern
+    query = query.filter(
+        ~or_(
+            func.lower(Car.title).like('suche %'),
+            func.lower(Car.title).like('suche:%'),
+            func.lower(Car.title).like('[suche]%'),
+            func.lower(Car.title).like('gesuch%'),
+            func.lower(Car.title).like('%wird gesucht%'),
+            func.lower(Car.title).like('% suche %'),
+        )
+    )
 
     if sort == 'price_asc':
         query = query.order_by(Car.price.asc())
@@ -352,6 +443,9 @@ def api_markt_stats():
     year_to = request.args.get('year_to', type=int)
     km_max = request.args.get('km_max', type=int)
     fuel_type = request.args.get('fuel_type', '').strip()
+    price_min = request.args.get('price_min', type=int)
+    price_max_filter = request.args.get('price_max', type=int)
+    transmission = request.args.get('transmission', '').strip()
     exclude_id = request.args.get('exclude_id', type=int)
 
     query = Car.query.filter(Car.price.isnot(None), Car.price >= 500, Car.price <= 500000)
@@ -368,6 +462,12 @@ def api_markt_stats():
         query = query.filter(Car.mileage <= km_max)
     if fuel_type:
         query = query.filter(func.lower(Car.fuel_type).contains(fuel_type.lower()))
+    if price_min:
+        query = query.filter(Car.price >= price_min)
+    if price_max_filter:
+        query = query.filter(Car.price <= price_max_filter)
+    if transmission:
+        query = query.filter(func.lower(Car.transmission).contains(transmission.lower()))
     if exclude_id:
         query = query.filter(Car.id != exclude_id)
 
