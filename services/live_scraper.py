@@ -54,6 +54,15 @@ def live_scraper_loop(app):
                 with app.app_context():
                     for car_data in results:
                         try:
+                            # "Suche"-Inserate (Gesuche) überspringen
+                            title_lower = (car_data.get('title') or '').lower()
+                            if (title_lower.startswith('suche ') or
+                                    title_lower.startswith('gesuch') or
+                                    title_lower.startswith('[suche]') or
+                                    'wird gesucht' in title_lower or
+                                    ' suche ' in title_lower):
+                                continue
+
                             existing = Car.query.filter_by(
                                 platform=car_data.get('platform'),
                                 external_id=car_data.get('external_id')
