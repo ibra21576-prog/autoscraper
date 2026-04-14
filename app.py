@@ -2,6 +2,7 @@ import json
 import os
 import time
 import logging
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, session
 from flask_mail import Mail
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -76,6 +77,28 @@ def _cleanup_brands_bg():
     threading.Thread(target=_run, daemon=True).start()
 
 _cleanup_brands_bg()
+
+
+def _cleanup_stale_listings_bg():
+    """Löscht veraltete Inserate im Hintergrund (alle 24h)."""
+    import threading, time
+    def _run():
+        while True:
+            time.sleep(24 * 3600)  # alle 24 Stunden
+            with app.app_context():
+                try:
+                    from datetime import timedelta
+                    cutoff = datetime.utcnow() - timedelta(days=60)
+                    deleted = Car.query.filter(Car.last_seen < cutoff).delete()
+                    if deleted:
+                        db.session.commit()
+                        logger.info(f"[CLEANUP] {deleted} veraltete Inserate gelöscht (>60 Tage)")
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"[CLEANUP] Fehler: {e}")
+    threading.Thread(target=_run, daemon=True).start()
+
+_cleanup_stale_listings_bg()
 
 
 # --- AUTH CONTEXT PROCESSOR ---
@@ -189,7 +212,10 @@ def live_feed():
     from scrapers.base import normalize_brand, BRAND_NORMALIZE
     from sqlalchemy import or_, and_
 
-    query = Car.query
+    # Nur Inserate zeigen die in den letzten 30 Tagen gesehen wurden
+    freshness_cutoff = datetime.utcnow() - timedelta(days=30)
+    query = Car.query.filter(Car.last_seen >= freshness_cutoff)
+
     if brand:
         canonical = normalize_brand(brand)
         # Alle bekannten Schreibweisen dieser Marke (VW, Volkswagen, volkswagen …)
