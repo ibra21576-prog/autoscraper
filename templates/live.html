@@ -603,15 +603,47 @@
 
 {% block scripts %}
 <script>
-let activeFilter = 'all';
 let lastCarId = {{ cars[0].id if cars else 0 }};
 
+// ---- Aktive Filter aus Server-Zustand ----
+const ACTIVE_FILTERS = {
+    brand:      '{{ f_brand or "" }}'.toLowerCase(),
+    model:      '{{ f_model or "" }}'.toLowerCase(),
+    fuel_type:  '{{ f_fuel_type or "" }}'.toLowerCase(),
+    platform:   '{{ f_platform or "" }}',
+    price_min:  {{ f_price_min or 0 }},
+    price_max:  {{ f_price_max or 0 }},
+    year_min:   {{ f_year_min or 0 }},
+    mileage_max:{{ f_mileage_max or 0 }},
+};
+
+// ---- Prüft ob ein Auto den aktiven Filtern entspricht ----
+function matchesFilter(car) {
+    if (ACTIVE_FILTERS.brand) {
+        const b = (car.brand || car.title || '').toLowerCase();
+        if (!b.includes(ACTIVE_FILTERS.brand)) return false;
+    }
+    if (ACTIVE_FILTERS.model) {
+        const m = ((car.model || '') + ' ' + (car.title || '')).toLowerCase();
+        if (!m.includes(ACTIVE_FILTERS.model)) return false;
+    }
+    if (ACTIVE_FILTERS.fuel_type) {
+        const f = (car.fuel_type || '').toLowerCase();
+        if (!f.includes(ACTIVE_FILTERS.fuel_type)) return false;
+    }
+    if (ACTIVE_FILTERS.platform && car.platform !== ACTIVE_FILTERS.platform) return false;
+    if (ACTIVE_FILTERS.price_min && car.price && car.price < ACTIVE_FILTERS.price_min) return false;
+    if (ACTIVE_FILTERS.price_max && car.price && car.price > ACTIVE_FILTERS.price_max) return false;
+    if (ACTIVE_FILTERS.year_min  && car.year  && car.year  < ACTIVE_FILTERS.year_min)  return false;
+    if (ACTIVE_FILTERS.mileage_max && car.mileage && car.mileage > ACTIVE_FILTERS.mileage_max) return false;
+    return true;
+}
+
 // ---- Filter Toggle ----
-const filterToggle = document.getElementById('filterToggle');
-const filterBody   = document.getElementById('filterBody');
+const filterToggle  = document.getElementById('filterToggle');
+const filterBody    = document.getElementById('filterBody');
 const filterChevron = document.getElementById('filterChevron');
 
-// Auto-open if filters are active
 {% if f_brand or f_model or f_price_min or f_price_max or f_year_min or f_mileage_max or f_fuel_type or f_platform %}
 filterBody.classList.add('open');
 filterChevron.classList.add('open');
@@ -639,29 +671,46 @@ function updateLfModels() {
 }
 updateLfModels();
 
-// ---- SSE (graceful fallback) ----
+// ---- SSE ----
 try {
     const evtSource = new EventSource('/api/stream');
     evtSource.onmessage = e => {
         const car = JSON.parse(e.data);
-        if (car.id > lastCarId) { lastCarId = car.id; }
-        addCarToFeed(car);
+        if (car.id > lastCarId) lastCarId = car.id;
+        if (matchesFilter(car)) {
+            addCarToFeed(car);
+            bumpCount(1);
+        }
     };
     evtSource.onerror = () => evtSource.close();
 } catch(e) {}
 
-// ---- Polling every 15s ----
+// ---- Polling every 15s — mit Filterparametern ----
+function buildPollUrl() {
+    const p = new URLSearchParams({ after_id: lastCarId, limit: 20 });
+    if (ACTIVE_FILTERS.brand)    p.set('brand', '{{ f_brand or "" }}');
+    if (ACTIVE_FILTERS.platform) p.set('platform', ACTIVE_FILTERS.platform);
+    if (ACTIVE_FILTERS.price_min)    p.set('price_min', ACTIVE_FILTERS.price_min);
+    if (ACTIVE_FILTERS.price_max)    p.set('price_max', ACTIVE_FILTERS.price_max);
+    if (ACTIVE_FILTERS.year_min)     p.set('year_min', ACTIVE_FILTERS.year_min);
+    if (ACTIVE_FILTERS.mileage_max)  p.set('mileage_max', ACTIVE_FILTERS.mileage_max);
+    return '/api/recent?' + p.toString();
+}
+
 setInterval(async () => {
     try {
-        const res  = await fetch('/api/recent?after_id=' + lastCarId + '&limit=20');
+        const res  = await fetch(buildPollUrl());
         const cars = await res.json();
-        if (cars.length > 0) {
-            cars.reverse().forEach(car => {
+        const matched = cars.filter(matchesFilter);
+        if (matched.length > 0) {
+            matched.reverse().forEach(car => {
                 addCarToFeed(car);
                 if (car.id > lastCarId) lastCarId = car.id;
             });
-            bumpCount(cars.length);
+            bumpCount(matched.length);
         }
+        // lastCarId auch ohne Match hochsetzen damit keine Duplikate
+        cars.forEach(c => { if (c.id > lastCarId) lastCarId = c.id; });
     } catch(e) {}
 }, 15000);
 
@@ -674,7 +723,7 @@ function bumpCount(n) {
     if (em) em.remove();
 }
 
-// ---- Build card HTML for live updates ----
+// ---- Card HTML ----
 function addCarToFeed(car) {
     const feed = document.getElementById('liveFeed');
     const el   = document.createElement('article');
@@ -692,20 +741,20 @@ function addCarToFeed(car) {
 
     const priceStr   = car.price   ? car.price.toLocaleString('de-DE') + ' €' : 'Auf Anfrage';
     const mileageStr = car.mileage ? car.mileage.toLocaleString('de-DE') + ' km' : null;
-    const imgSrc     = car.image_url || '';
     const detailUrl  = '/car/' + car.id;
+    const imgSrc     = car.image_url || '';
 
     const imgHtml = imgSrc
         ? `<img src="${imgSrc}" alt="${car.title||''}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<div class=lf-img-placeholder><i class=bi\\ bi-car-front></i></div>'">`
         : `<div class="lf-img-placeholder"><i class="bi bi-car-front"></i></div>`;
 
     const specs = [
-        car.year          ? `<div class="lf-spec"><i class="bi bi-calendar3"></i><span>${car.year}</span></div>` : '',
-        mileageStr        ? `<div class="lf-spec lf-spec--highlight"><i class="bi bi-speedometer2"></i><span>${mileageStr}</span></div>` : '',
-        car.fuel_type     ? `<div class="lf-spec"><i class="bi bi-fuel-pump"></i><span>${car.fuel_type}</span></div>` : '',
-        car.power         ? `<div class="lf-spec"><i class="bi bi-lightning-charge"></i><span>${car.power}</span></div>` : '',
-        car.transmission  ? `<div class="lf-spec"><i class="bi bi-gear-wide-connected"></i><span>${car.transmission}</span></div>` : '',
-        car.color         ? `<div class="lf-spec"><i class="bi bi-palette2"></i><span>${car.color}</span></div>` : '',
+        car.year         ? `<div class="lf-spec"><i class="bi bi-calendar3"></i><span>${car.year}</span></div>` : '',
+        mileageStr       ? `<div class="lf-spec lf-spec--highlight"><i class="bi bi-speedometer2"></i><span>${mileageStr}</span></div>` : '',
+        car.fuel_type    ? `<div class="lf-spec"><i class="bi bi-fuel-pump"></i><span>${car.fuel_type}</span></div>` : '',
+        car.power        ? `<div class="lf-spec"><i class="bi bi-lightning-charge"></i><span>${car.power}</span></div>` : '',
+        car.transmission ? `<div class="lf-spec"><i class="bi bi-gear-wide-connected"></i><span>${car.transmission}</span></div>` : '',
+        car.color        ? `<div class="lf-spec"><i class="bi bi-palette2"></i><span>${car.color}</span></div>` : '',
     ].join('');
 
     const meta = [
@@ -739,7 +788,7 @@ function addCarToFeed(car) {
     }, 8000);
 }
 
-// ---- Scraper status polling ----
+// ---- Scraper Status ----
 setInterval(async () => {
     try {
         const s = await (await fetch('/api/scraper-status')).json();

@@ -274,12 +274,39 @@ def stream():
 
 @app.route('/api/recent')
 def api_recent():
-    """Letzte Autos als JSON (Polling-Fallback)."""
-    limit = request.args.get('limit', 20, type=int)
+    """Letzte Autos als JSON (Polling-Fallback), mit optionaler Filterunterstützung."""
+    from sqlalchemy import func, or_
+    from scrapers.base import normalize_brand, BRAND_NORMALIZE
+    limit    = request.args.get('limit', 20, type=int)
     after_id = request.args.get('after_id', 0, type=int)
+    brand    = request.args.get('brand', '').strip()
+    platform = request.args.get('platform', '').strip()
+    price_min    = request.args.get('price_min', type=int)
+    price_max    = request.args.get('price_max', type=int)
+    year_min     = request.args.get('year_min', type=int)
+    mileage_max  = request.args.get('mileage_max', type=int)
+
     query = Car.query
     if after_id:
         query = query.filter(Car.id > after_id)
+    if brand:
+        canonical = normalize_brand(brand)
+        aliases = {canonical.lower(), brand.strip().lower()} | \
+                  {k.lower() for k, v in BRAND_NORMALIZE.items() if v.lower() == canonical.lower()}
+        brand_match   = or_(*[func.lower(func.trim(Car.brand)) == a for a in aliases])
+        title_fallback = Car.brand.is_(None) & func.lower(Car.title).like(f'%{canonical.lower()}%')
+        query = query.filter(or_(brand_match, title_fallback))
+    if platform:
+        query = query.filter(Car.platform == platform)
+    if price_min:
+        query = query.filter(Car.price >= price_min)
+    if price_max:
+        query = query.filter(Car.price <= price_max)
+    if year_min:
+        query = query.filter(Car.year >= year_min)
+    if mileage_max:
+        query = query.filter(Car.mileage <= mileage_max)
+
     cars = query.order_by(Car.first_seen.desc()).limit(limit).all()
     return jsonify([c.to_dict() for c in cars])
 
