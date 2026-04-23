@@ -323,6 +323,10 @@ async function loadStats() {
 
         if (!data.stats || data.count === 0) {
             document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('emptyState').innerHTML = `
+                <p style="font-size:1.3rem;margin-bottom:.5rem;">Keine Treffer</p>
+                <p>Keine Fahrzeuge für diese Filter gefunden.<br>
+                   Versuche weniger Einschränkungen oder klicke auf <strong>„Jetzt sammeln"</strong>.</p>`;
             return;
         }
 
@@ -419,6 +423,9 @@ function renderListings(listings, stats) {
         </tr>`;
     });
 }
+
+// Beim Laden der Seite alle Daten automatisch anzeigen
+window.addEventListener('DOMContentLoaded', () => loadStats());
 
 async function triggerScrape() {
     const btn = document.getElementById('scrapeBtn');

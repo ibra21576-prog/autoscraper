@@ -472,11 +472,12 @@ def marktanalyse():
 def api_markt_stats():
     """Marktstatistiken aus der DB mit Filtern."""
     import statistics as stats_mod
-    from sqlalchemy import func
+    from sqlalchemy import func, or_, and_
+    from scrapers.base import normalize_brand, BRAND_NORMALIZE
 
     brand = request.args.get('brand', '').strip()
     model = request.args.get('model', '').strip()
-    variant = request.args.get('variant', '').strip()  # Freitext z.B. "1.4 Turbo", "GTC"
+    variant = request.args.get('variant', '').strip()
     year_exact = request.args.get('year_exact', type=int)
     year_from = request.args.get('year_from', type=int)
     year_to = request.args.get('year_to', type=int)
@@ -487,13 +488,22 @@ def api_markt_stats():
     transmission = request.args.get('transmission', '').strip()
     exclude_id = request.args.get('exclude_id', type=int)
 
-    from sqlalchemy import or_
     query = Car.query.filter(Car.price.isnot(None), Car.price >= 500, Car.price <= 500000)
 
     if brand:
-        query = query.filter(func.lower(Car.brand) == brand.lower())
+        # Gleiche Alias-Logik wie im Live Feed
+        canonical = normalize_brand(brand)
+        aliases = {canonical.lower(), brand.strip().lower()} | \
+                  {k.lower() for k, v in BRAND_NORMALIZE.items() if v.lower() == canonical.lower()}
+        brand_match = or_(*[func.lower(func.trim(Car.brand)) == a for a in aliases])
+        title_fallback = and_(
+            Car.brand.is_(None),
+            func.lower(Car.title).like(f'%{canonical.lower()}%')
+        )
+        query = query.filter(or_(brand_match, title_fallback))
+
     if model:
-        # Contains-Suche: "Astra" findet auch "Astra GTC", "Astra 1.4" etc.
+        # Contains in model-Feld ODER Titel — "Golf" findet "Golf GTI", "VW Golf 2018" etc.
         query = query.filter(
             or_(
                 func.lower(Car.model).contains(model.lower()),
@@ -501,7 +511,6 @@ def api_markt_stats():
             )
         )
     if variant:
-        # Freitext-Suche im Titel für Variante/Ausstattung
         query = query.filter(func.lower(Car.title).contains(variant.lower()))
     if year_exact:
         query = query.filter(Car.year == year_exact)
