@@ -585,12 +585,8 @@ def api_markt_stats():
 
     # Top Listings (günstigste + teuerste)
     listings = []
-    for c in cars[:10]:  # günstigste 10
-        listings.append(c.to_dict())
-    for c in cars[-5:]:  # teuerste 5
-        d = c.to_dict()
-        if d not in listings:
-            listings.append(d)
+    # Alle Fahrzeuge (sortiert nach Preis)
+    listings = [c.to_dict() for c in cars[:100]]  # bis zu 100 anzeigen
 
     return jsonify({
         'count': n,

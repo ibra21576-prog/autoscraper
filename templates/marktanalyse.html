@@ -51,6 +51,23 @@
     .tag-cheap{background:#dcfce7;color:#166534;}
     .tag-fair{background:#f0f0f0;color:#555;}
     .tag-exp{background:#fce4ec;color:#b71c1c;}
+    /* Car-Grid */
+    .ma-cars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-top:.5rem;}
+    .ma-car{background:#fff;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;text-decoration:none;color:inherit;}
+    .ma-car:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08);}
+    .ma-car-img{aspect-ratio:4/3;background:#f0f0f0;position:relative;overflow:hidden;}
+    .ma-car-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
+    .ma-car:hover .ma-car-img img{transform:scale(1.04);}
+    .ma-car-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:2.2rem;}
+    .ma-car-platform{position:absolute;bottom:.5rem;left:.5rem;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;background:rgba(10,10,10,.85);color:#fff;}
+    .ma-car-tag{position:absolute;top:.5rem;right:.5rem;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:3px;}
+    .ma-car-body{padding:.85rem;display:flex;flex-direction:column;flex:1;gap:.35rem;}
+    .ma-car-title{font-family:'DM Serif Display',serif;font-size:.95rem;line-height:1.3;color:#0A0A0A;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0;}
+    .ma-car-price{font-family:'DM Serif Display',serif;font-size:1.15rem;color:#0A0A0A;}
+    .ma-car-specs{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:.2rem;}
+    .ma-car-spec{font-size:.7rem;color:#666;padding:2px 6px;background:#f2f2f2;border-radius:3px;}
+    .ma-car-spec.hl{background:#0A0A0A;color:#fff;}
+    .ma-car-meta{display:flex;gap:.5rem;font-size:.68rem;color:#888;margin-top:auto;padding-top:.4rem;border-top:1px solid #eee;}
     /* Loading */
     .ma-loading{text-align:center;padding:3rem 0;display:none;}
     .ma-spinner{width:36px;height:36px;border:3px solid #ddd;border-top-color:#111;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem;}
@@ -193,24 +210,13 @@
             </div>
         </div>
 
-        <!-- Table -->
+        <!-- Angebote als Kachel-Grid -->
         <div class="ma-chart-card" style="margin-bottom:2rem;">
-            <h3>Angebote</h3>
-            <div class="ma-table-wrap">
-                <table class="ma-table" id="listingsTable">
-                    <thead>
-                        <tr>
-                            <th>Fahrzeug</th>
-                            <th>Preis</th>
-                            <th>Kilometer</th>
-                            <th>Baujahr</th>
-                            <th>Plattform</th>
-                            <th>Bewertung</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listingsBody"></tbody>
-                </table>
-            </div>
+            <h3 style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                <span>Angebote</span>
+                <span style="font-size:.72rem;color:#888;text-transform:none;letter-spacing:0;" id="listingsCount"></span>
+            </h3>
+            <div class="ma-cars-grid" id="listingsGrid"></div>
         </div>
     </div>
 
@@ -403,24 +409,60 @@ function renderPlatformChart(platforms) {
     });
 }
 
+function platformName(p) {
+    return ({
+        'autoscout24': 'AutoScout24', 'kleinanzeigen': 'Kleinanzeigen',
+        'mobile_de': 'Mobile.de', 'pkw_de': 'pkw.de',
+        'autohero': 'Autohero', 'heycar': 'heycar'
+    })[p] || p;
+}
+
 function renderListings(listings, stats) {
-    const tbody = document.getElementById('listingsBody');
-    tbody.innerHTML = '';
+    const grid = document.getElementById('listingsGrid');
+    const cnt  = document.getElementById('listingsCount');
+    grid.innerHTML = '';
+    if (cnt) cnt.textContent = `${listings.length} Fahrzeuge`;
+
     listings.forEach(c => {
-        let tag = '<span class="tag tag-fair">Fair</span>';
+        // Bewertungs-Tag
+        let tagHtml = '';
         if (c.price && stats.avg) {
-            if (c.price < stats.avg * 0.8) tag = '<span class="tag tag-cheap">Günstig</span>';
-            else if (c.price > stats.avg * 1.2) tag = '<span class="tag tag-exp">Teuer</span>';
+            if (c.price < stats.avg * 0.85) tagHtml = `<span class="ma-car-tag" style="background:#dcfce7;color:#166534;">Günstig</span>`;
+            else if (c.price > stats.avg * 1.15) tagHtml = `<span class="ma-car-tag" style="background:#fce4ec;color:#b71c1c;">Teuer</span>`;
+            else tagHtml = `<span class="ma-car-tag" style="background:#f0f0f0;color:#555;">Fair</span>`;
         }
-        const pName = c.platform === 'autoscout24' ? 'AutoScout24' : c.platform === 'kleinanzeigen' ? 'Kleinanzeigen' : c.platform;
-        tbody.innerHTML += `<tr>
-            <td>${c.title || '–'}</td>
-            <td><strong>${fmt(c.price)}</strong></td>
-            <td>${fmtKm(c.mileage)}</td>
-            <td>${c.year || '–'}</td>
-            <td>${pName}</td>
-            <td>${tag}</td>
-        </tr>`;
+
+        const imgHtml = c.image_url
+            ? `<img src="${c.image_url}" alt="${(c.title||'').replace(/"/g,'&quot;')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<div class=ma-car-placeholder><i class=bi\\ bi-car-front></i></div>'">`
+            : `<div class="ma-car-placeholder"><i class="bi bi-car-front"></i></div>`;
+
+        const specs = [
+            c.year      ? `<span class="ma-car-spec">${c.year}</span>` : '',
+            c.mileage   ? `<span class="ma-car-spec hl">${c.mileage.toLocaleString('de-DE')} km</span>` : '',
+            c.fuel_type ? `<span class="ma-car-spec">${c.fuel_type}</span>` : '',
+            c.transmission ? `<span class="ma-car-spec">${c.transmission}</span>` : '',
+        ].join('');
+
+        const meta = [
+            c.location ? `<span><i class="bi bi-geo-alt"></i> ${c.location}</span>` : '',
+        ].filter(Boolean).join('');
+
+        const card = document.createElement('a');
+        card.href = '/car/' + c.id;
+        card.className = 'ma-car';
+        card.innerHTML = `
+            <div class="ma-car-img">
+                ${imgHtml}
+                ${tagHtml}
+                <span class="ma-car-platform">${platformName(c.platform)}</span>
+            </div>
+            <div class="ma-car-body">
+                <h4 class="ma-car-title">${c.title || 'Unbekannt'}</h4>
+                <div class="ma-car-price">${fmt(c.price)}</div>
+                <div class="ma-car-specs">${specs}</div>
+                ${meta ? `<div class="ma-car-meta">${meta}</div>` : ''}
+            </div>`;
+        grid.appendChild(card);
     });
 }
 
