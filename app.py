@@ -247,13 +247,21 @@ def live_feed():
     else:
         query = query.order_by(Car.first_seen.desc())
 
-    recent_cars = query.limit(120).all()
+    # Pagination
+    page = max(1, request.args.get('page', 1, type=int))
+    per_page = 48
+    total = query.count()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    recent_cars = query.offset((page - 1) * per_page).limit(per_page).all()
+
     return render_template('live.html', cars=recent_cars, status=status,
                            car_data=CAR_DATA, car_brands=sorted(CAR_DATA.keys()),
                            f_brand=brand, f_model=model,
                            f_price_min=price_min, f_price_max=price_max,
                            f_year_min=year_min, f_mileage_max=mileage_max,
-                           f_fuel_type=fuel_type, f_platform=platform, f_sort=sort)
+                           f_fuel_type=fuel_type, f_platform=platform, f_sort=sort,
+                           page=page, total_pages=total_pages, total=total, per_page=per_page)
 
 
 @app.route('/api/stream')

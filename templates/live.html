@@ -142,7 +142,8 @@
     <!-- ===== RESULTS INFO ===== -->
     <div class="lf-results-bar">
         <span class="lf-results-text">
-            <strong id="resultCount">{{ cars|length }}</strong> Fahrzeuge gefunden
+            <strong id="resultCount">{{ total }}</strong> Fahrzeuge gefunden
+            {% if total_pages > 1 %} · Seite <strong>{{ page }}</strong> von <strong>{{ total_pages }}</strong>{% endif %}
             {% if f_brand %} · <em>{{ f_brand }}{% if f_model %} {{ f_model }}{% endif %}</em>{% endif %}
             {% if f_fuel_type %} · <em>{{ f_fuel_type }}</em>{% endif %}
         </span>
@@ -243,6 +244,44 @@
         <p>Neue Fahrzeuge erscheinen hier automatisch</p>
         {% endif %}
     </div>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+    {% set args = request.args.to_dict() %}
+    {% macro page_url(p) %}{% set _ = args.update({'page': p}) %}{{ url_for('live_feed', **args) }}{% endmacro %}
+    <nav class="lf-pagination" aria-label="Seitennavigation">
+        <a class="lf-page-btn {% if page <= 1 %}disabled{% endif %}"
+           {% if page > 1 %}href="{{ page_url(page - 1) }}"{% endif %}>
+            <i class="bi bi-chevron-left"></i> Vorherige
+        </a>
+
+        <div class="lf-page-numbers">
+            {# Zeige: 1 ... (page-1) page (page+1) ... last #}
+            {% set pages_to_show = [] %}
+            {% set _ = pages_to_show.append(1) %}
+            {% if page - 1 > 1 %}{% set _ = pages_to_show.append(page - 1) %}{% endif %}
+            {% if page != 1 and page != total_pages %}{% set _ = pages_to_show.append(page) %}{% endif %}
+            {% if page + 1 < total_pages %}{% set _ = pages_to_show.append(page + 1) %}{% endif %}
+            {% if total_pages > 1 %}{% set _ = pages_to_show.append(total_pages) %}{% endif %}
+
+            {% set seen = [] %}
+            {% for p in pages_to_show %}
+                {% if p not in seen %}
+                    {% set _ = seen.append(p) %}
+                    {% if loop.index0 > 0 and p - seen[loop.index0 - 1] > 1 %}
+                    <span class="lf-page-ellipsis">...</span>
+                    {% endif %}
+                    <a class="lf-page-num {% if p == page %}active{% endif %}"
+                       {% if p != page %}href="{{ page_url(p) }}"{% endif %}>{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <a class="lf-page-btn {% if page >= total_pages %}disabled{% endif %}"
+           {% if page < total_pages %}href="{{ page_url(page + 1) }}"{% endif %}>
+            Nächste <i class="bi bi-chevron-right"></i>
+        </a>
+    </nav>
     {% endif %}
 </section>
 
@@ -597,6 +636,86 @@
     .lf-specs { grid-template-columns: 1fr 1fr; }
     .lf-price { font-size: 1.1rem; }
     .lf-car-title { font-size: .92rem; }
+}
+
+/* ---------- PAGINATION ---------- */
+.lf-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-top: 2.2rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--color-border);
+}
+.lf-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: .55rem 1rem;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--color-black);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    background: #fff;
+    transition: all .2s;
+    font-family: var(--font-body);
+}
+.lf-page-btn:hover:not(.disabled) {
+    background: var(--color-black);
+    color: #fff;
+    border-color: var(--color-black);
+}
+.lf-page-btn.disabled {
+    opacity: .35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.lf-page-numbers {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin: 0 .5rem;
+}
+.lf-page-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 .6rem;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--color-black);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    background: #fff;
+    font-family: var(--font-body);
+    transition: all .2s;
+}
+.lf-page-num:hover:not(.active) {
+    border-color: var(--color-black);
+}
+.lf-page-num.active {
+    background: var(--color-black);
+    color: #fff;
+    border-color: var(--color-black);
+    font-weight: 700;
+    pointer-events: none;
+}
+.lf-page-ellipsis {
+    color: var(--color-taupe);
+    padding: 0 .3rem;
+    font-size: .85rem;
+}
+@media(max-width: 479px) {
+    .lf-page-btn { padding: .5rem .7rem; font-size: .72rem; }
+    .lf-page-num { min-width: 34px; height: 34px; font-size: .8rem; }
+    .lf-page-btn span, .lf-page-btn:not(:has(i)) { display: none; }
 }
 </style>
 {% endblock %}
