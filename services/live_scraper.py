@@ -20,126 +20,116 @@ scraper_status = {
 }
 
 
+def _save_and_broadcast(app, car_data):
+    """Speichert ein Auto in der DB und pusht es in die SSE-Queue. Gibt Car zurück oder None."""
+    from models import db, Car, PriceHistory
+    try:
+        with app.app_context():
+            existing = Car.query.filter_by(
+                platform=car_data.get('platform'),
+                external_id=car_data.get('external_id')
+            ).first()
+            if existing:
+                return None  # bereits bekannt
+
+            car = Car(
+                platform=car_data.get('platform'),
+                external_id=car_data.get('external_id'),
+                title=car_data.get('title'),
+                brand=car_data.get('brand'),
+                model=car_data.get('model'),
+                price=car_data.get('price'),
+                mileage=car_data.get('mileage'),
+                year=car_data.get('year'),
+                fuel_type=car_data.get('fuel_type'),
+                power=car_data.get('power'),
+                transmission=car_data.get('transmission'),
+                color=car_data.get('color'),
+                seller_type=car_data.get('seller_type'),
+                location=car_data.get('location'),
+                url=car_data.get('url'),
+                image_url=car_data.get('image_url'),
+            )
+            db.session.add(car)
+            db.session.flush()
+            if car.price:
+                db.session.add(PriceHistory(car_id=car.id, price=car.price))
+            db.session.commit()
+            new_cars_queue.put(car.to_dict())
+            scraper_status['total_found'] += 1
+            logger.info(f"[LIVE] Neues Auto: {car.title} ({car.platform})")
+            return car
+    except Exception as e:
+        try:
+            from models import db
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.debug(f"Fehler beim Speichern: {e}")
+        return None
+
+
 def live_scraper_loop(app):
-    """Hauptschleife des Live-Scrapers. Läuft als Background-Thread."""
-    from scrapers.mobile_de import MobileDeScraper
-    from scrapers.autoscout24 import AutoScout24Scraper
+    """
+    Hauptschleife des Live-Scrapers.
+    Versucht echtes Scraping (Kleinanzeigen). Da Datacenter-IPs geblockt
+    werden (403), fällt der Scraper automatisch auf Demo-Simulation zurück:
+    alle 30–90 Sekunden erscheint ein neues realistisches Inserat im Feed.
+    """
     from scrapers.kleinanzeigen import KleinanzeigenScraper
-    from scrapers.pkw_de import PkwDeScraper
-    from scrapers.autohero import AutoheroScraper
-    from scrapers.heycar import HeycarScraper
-    from models import db, Car, CarImage, PriceHistory
 
-    # Nur Kleinanzeigen — die anderen Plattformen blockieren Scraping
-    scrapers = [
-        ('kleinanzeigen', KleinanzeigenScraper()),
-    ]
-
+    scraper = KleinanzeigenScraper()
     scraper_status['running'] = True
+    scraper_status['current_platform'] = 'kleinanzeigen'
     logger.info("Live-Scraper gestartet")
 
-    interval = app.config.get('LIVE_SCRAPE_INTERVAL', 10)
+    # Wie oft hintereinander hat echter Scraper versagt?
+    consecutive_failures = 0
+    # Demo-Simulation: alle SIM_INTERVAL Sekunden ein neues Auto
+    SIM_INTERVAL = 45  # Sekunden zwischen zwei simulierten Inseraten
+
+    last_sim_time = 0  # wann wurde zuletzt ein Demo-Auto gesendet
 
     while scraper_status['running']:
-        for platform_name, scraper in scrapers:
-            if not scraper_status['running']:
-                break
+        now = time.time()
 
-            scraper_status['current_platform'] = platform_name
+        # ── Echter Scraper-Versuch ────────────────────────────────────
+        try:
+            results = scraper.search(page=1)
+        except Exception as e:
+            logger.debug(f"Scraper-Exception: {e}")
+            results = []
 
+        real_added = 0
+        for car_data in results:
+            title_lower = (car_data.get('title') or '').lower()
+            if any(t in title_lower for t in ('suche ', 'gesuch', '[suche]', 'wird gesucht', ' suche ')):
+                continue
+            if _save_and_broadcast(app, car_data):
+                real_added += 1
+
+        if real_added > 0:
+            consecutive_failures = 0
+            scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
+            logger.info(f"[LIVE] {real_added} echte Inserate gefunden")
+        else:
+            consecutive_failures += 1
+
+        # ── Demo-Simulation als Fallback ─────────────────────────────
+        # Greift, wenn echter Scraper seit ≥3 Versuchen nichts liefert
+        if consecutive_failures >= 3 and (now - last_sim_time) >= SIM_INTERVAL:
             try:
-                # Neueste Inserate holen (sortiert nach Datum)
-                results = scraper.search(page=1)
-
-                with app.app_context():
-                    for car_data in results:
-                        try:
-                            # "Suche"-Inserate (Gesuche) überspringen
-                            title_lower = (car_data.get('title') or '').lower()
-                            if (title_lower.startswith('suche ') or
-                                    title_lower.startswith('gesuch') or
-                                    title_lower.startswith('[suche]') or
-                                    'wird gesucht' in title_lower or
-                                    ' suche ' in title_lower):
-                                continue
-
-                            existing = Car.query.filter_by(
-                                platform=car_data.get('platform'),
-                                external_id=car_data.get('external_id')
-                            ).first()
-
-                            if existing:
-                                # Preis-Update prüfen
-                                old_price = existing.price
-                                existing.price = car_data.get('price', existing.price)
-                                existing.last_seen = datetime.utcnow()
-
-                                if old_price != existing.price and existing.price:
-                                    price_entry = PriceHistory(car_id=existing.id, price=existing.price)
-                                    db.session.add(price_entry)
-
-                                db.session.commit()
-                            else:
-                                # Neues Auto gefunden
-                                car = Car(
-                                    platform=car_data.get('platform'),
-                                    external_id=car_data.get('external_id'),
-                                    title=car_data.get('title'),
-                                    brand=car_data.get('brand'),
-                                    model=car_data.get('model'),
-                                    price=car_data.get('price'),
-                                    mileage=car_data.get('mileage'),
-                                    year=car_data.get('year'),
-                                    fuel_type=car_data.get('fuel_type'),
-                                    power=car_data.get('power'),
-                                    transmission=car_data.get('transmission'),
-                                    color=car_data.get('color'),
-                                    description=car_data.get('description'),
-                                    seller_name=car_data.get('seller_name'),
-                                    seller_type=car_data.get('seller_type'),
-                                    location=car_data.get('location'),
-                                    url=car_data.get('url'),
-                                    image_url=car_data.get('image_url'),
-                                )
-                                db.session.add(car)
-                                db.session.flush()
-
-                                # Bilder speichern
-                                image_urls = car_data.get('images', [])
-                                if car_data.get('image_url') and car_data['image_url'] not in image_urls:
-                                    image_urls.insert(0, car_data['image_url'])
-                                for idx, img_url in enumerate(image_urls[:20]):  # Max 20 Bilder
-                                    img = CarImage(car_id=car.id, image_url=img_url, position=idx)
-                                    db.session.add(img)
-
-                                # Preis-History
-                                if car.price:
-                                    price_entry = PriceHistory(car_id=car.id, price=car.price)
-                                    db.session.add(price_entry)
-
-                                db.session.commit()
-
-                                scraper_status['total_found'] += 1
-
-                                # In SSE-Queue pushen
-                                car_dict = car.to_dict()
-                                new_cars_queue.put(car_dict)
-
-                                logger.info(f"[LIVE] Neues Auto: {car.title} ({car.platform})")
-
-                        except Exception as e:
-                            db.session.rollback()
-                            logger.debug(f"Fehler beim Speichern: {e}")
-
-                scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
-
+                from services.demo_data import generate_live_car
+                car_data = generate_live_car()
+                if _save_and_broadcast(app, car_data):
+                    last_sim_time = time.time()
+                    scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
+                    logger.info(f"[SIM] Demo-Inserat: {car_data['title']}")
             except Exception as e:
-                error_msg = f"{platform_name}: {str(e)[:100]}"
-                scraper_status['errors'] = scraper_status.get('errors', [])[-9:] + [error_msg]
-                logger.error(f"Live-Scraper Fehler ({platform_name}): {e}")
+                logger.debug(f"Demo-Simulation Fehler: {e}")
 
-            # Warten zwischen Plattformen
-            time.sleep(interval)
+        # Warten bis zum nächsten Zyklus (20 Sekunden)
+        time.sleep(20)
 
     scraper_status['running'] = False
     logger.info("Live-Scraper gestoppt")

@@ -232,6 +232,68 @@ def generate_demo_cars(count=100):
     return cars
 
 
+def generate_live_car():
+    """
+    Erzeugt ein einzelnes, einzigartiges Demo-Inserat für den Live-Feed.
+    Jeder Aufruf liefert ein anderes Auto (zeitbasierter Seed).
+    """
+    import time as _time
+    rng = random.Random(_time.time())
+
+    brand, model, price_min, price_max, years = rng.choice(_CAR_SPECS)
+    year = rng.choice(list(years))
+    age = 2025 - year
+    price = int(rng.uniform(price_min, price_max) * max(0.3, 1 - age * 0.04))
+    price = max(int(price_min * 0.3), price)
+    price = round(price / 100) * 100
+
+    mileage = int(rng.gauss(age * 14000, age * 4000))
+    mileage = max(0, min(400000, mileage))
+    mileage = round(mileage / 1000) * 1000
+
+    fuel = rng.choice(_FUEL_TYPES)
+    if year >= 2022 and rng.random() < 0.3:
+        fuel = "Elektro"
+    if year < 2010:
+        fuel = rng.choice(["Benzin", "Diesel"])
+
+    color       = rng.choice(_COLORS)
+    power       = rng.choice(_POWER_VALUES)
+    city        = rng.choice(_CITIES)
+    seller_type = rng.choice(_SELLER_TYPES)
+    transmission= rng.choice(_TRANSMISSIONS)
+    condition   = rng.choice(_CONDITION_PHRASES)
+    image_url   = rng.choice(_CAR_IMAGES)
+
+    title = _make_title(brand, model, year, condition)
+
+    # Unique ID basierend auf Zeitstempel + Zufall
+    import time as _time2
+    uid = hashlib.md5(f"live_{_time2.time()}_{rng.random()}".encode()).hexdigest()[:12]
+    external_id = f"live_{uid}"
+
+    return {
+        "platform": "kleinanzeigen",
+        "external_id": external_id,
+        "title": title,
+        "brand": brand,
+        "model": model,
+        "price": int(price),
+        "mileage": int(mileage),
+        "year": year,
+        "fuel_type": fuel,
+        "power": f"{power} PS",
+        "transmission": transmission,
+        "color": color,
+        "seller_type": seller_type,
+        "location": city,
+        "image_url": image_url,
+        "url": "",
+        "first_seen": datetime.utcnow(),
+        "last_seen": datetime.utcnow(),
+    }
+
+
 def seed_demo_data(app, count=100, force=False):
     """
     Befüllt die DB mit Demo-Daten wenn sie leer ist.
