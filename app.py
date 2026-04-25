@@ -540,6 +540,15 @@ def api_markt_stats():
     })
 
 
+@app.route('/api/seed-demo', methods=['POST'])
+def api_seed_demo():
+    """Demo-Daten einfügen wenn DB leer ist (oder force=true)."""
+    from services.demo_data import seed_demo_data
+    force = (request.json or {}).get('force', False)
+    stored, existing = seed_demo_data(app, count=120, force=force)
+    return jsonify({'status': 'ok', 'stored': stored, 'existing_before': existing})
+
+
 @app.route('/api/bg-scrape', methods=['POST'])
 def api_bg_scrape():
     """Manuell einen Background-Scrape auslösen."""

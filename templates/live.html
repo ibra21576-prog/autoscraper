@@ -1,292 +1,792 @@
 {% extends "base.html" %}
-{% block title %}Live Feed — SAIF AutoMarkt{% endblock %}
+{% block title %}Live Feed — SAIF{% endblock %}
+
+{% block hero %}{% endblock %}
 
 {% block content %}
-<section class="section-spacing">
-    <!-- Header -->
-    <div class="live-header">
-        <div class="live-title">
-            <span class="live-dot-lg"></span>
-            <h2 class="section-title" style="margin-bottom:0;">Live Feed</h2>
-            <span class="live-count" id="totalCount">{{ cars|length }} gefunden</span>
-        </div>
-        <div class="live-status" id="statusText">
-            {% if status.running %}
-            Scannt <strong id="currentPlatform">{{ status.current_platform or '...' }}</strong>
-            <span id="lastScrape">{{ status.last_scrape or '' }}</span>
-            — aktualisiert sich automatisch
-            {% else %}
-            Scraper nicht aktiv
-            {% endif %}
+<section style="padding-top:var(--spacing-lg);padding-bottom:var(--spacing-2xl);">
+
+    <!-- ===== PAGE HEADER ===== -->
+    <div class="lf-page-header">
+        <div class="lf-title-row">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span class="live-dot-lg"></span>
+                <h1 class="section-title" style="margin:0;font-size:clamp(1.4rem,4vw,2rem);">Live Feed</h1>
+                <span class="lf-count-badge" id="totalCount">{{ cars|length }}</span>
+            </div>
+            <div class="lf-status" id="statusText">
+                {% if status.running %}
+                <span class="lf-status-dot"></span>
+                Scannt <strong id="currentPlatform">{{ status.current_platform or '...' }}</strong>
+                {% else %}
+                <span style="color:var(--color-taupe);">Scraper inaktiv</span>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- Auto-Filter -->
-    <style>
-    .live-filter{background:#fff;border:1px solid var(--color-border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;}
-    .lf-row{display:flex;gap:.8rem;flex-wrap:wrap;align-items:end;}
-    .lf-group{flex:1;min-width:140px;}
-    .lf-group label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-taupe);margin-bottom:.25rem;}
-    .lf-group select,.lf-group input{width:100%;padding:.45rem .6rem;border:1px solid var(--color-border);border-radius:5px;font-size:.88rem;font-family:var(--font-body);background:#fff;}
-    .lf-group select:focus,.lf-group input:focus{outline:none;border-color:#111;}
-    .lf-btn{background:#111;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:5px;font-size:.88rem;cursor:pointer;font-family:var(--font-body);font-weight:500;height:36px;}
-    .lf-btn:hover{background:#333;}
-    .lf-reset{background:transparent;color:var(--color-taupe);border:1px solid var(--color-border);padding:.5rem 1rem;border-radius:5px;font-size:.85rem;cursor:pointer;height:36px;}
-    .lf-reset:hover{border-color:#111;color:#111;}
-    .lf-active{background:var(--color-sand);border-color:var(--color-bronze);}
-    </style>
-    <div class="live-filter {% if f_brand %}lf-active{% endif %}">
-        <form method="GET" action="{{ url_for('live_feed') }}">
-            <div class="lf-row">
-                <div class="lf-group">
-                    <label>Marke</label>
-                    <select name="brand" id="lfBrand" onchange="updateLfModels()">
-                        <option value="">Alle Marken</option>
-                        {% for b in car_brands %}
-                        <option value="{{ b }}" {% if f_brand == b %}selected{% endif %}>{{ b }}</option>
-                        {% endfor %}
-                    </select>
+    <!-- ===== FILTER PANEL ===== -->
+    <div class="lf-filter-panel" id="filterPanel">
+        <div class="lf-filter-toggle" id="filterToggle">
+            <span><i class="bi bi-sliders"></i> Filter
+                {% if f_brand or f_model or f_price_min or f_price_max or f_year_min or f_mileage_max or f_fuel_type or f_platform %}
+                <span class="lf-filter-dot"></span>
+                {% endif %}
+            </span>
+            <i class="bi bi-chevron-down" id="filterChevron"></i>
+        </div>
+
+        <div class="lf-filter-body" id="filterBody">
+            <form method="GET" action="{{ url_for('live_feed') }}" id="filterForm">
+                <!-- Row 1: Marke / Modell / Kraftstoff / Plattform -->
+                <div class="lf-grid">
+                    <div class="lf-group">
+                        <label>Marke</label>
+                        <select name="brand" id="lfBrand" onchange="updateLfModels()">
+                            <option value="">Alle Marken</option>
+                            {% for b in car_brands %}
+                            <option value="{{ b }}" {% if f_brand == b %}selected{% endif %}>{{ b }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="lf-group">
+                        <label>Modell</label>
+                        <select name="model" id="lfModel">
+                            <option value="">Alle Modelle</option>
+                        </select>
+                    </div>
+                    <div class="lf-group">
+                        <label>Kraftstoff</label>
+                        <select name="fuel_type">
+                            <option value="">Alle</option>
+                            <option value="benzin" {% if f_fuel_type == 'benzin' %}selected{% endif %}>Benzin</option>
+                            <option value="diesel" {% if f_fuel_type == 'diesel' %}selected{% endif %}>Diesel</option>
+                            <option value="elektro" {% if f_fuel_type == 'elektro' %}selected{% endif %}>Elektro</option>
+                            <option value="hybrid" {% if f_fuel_type == 'hybrid' %}selected{% endif %}>Hybrid</option>
+                            <option value="lpg" {% if f_fuel_type == 'lpg' %}selected{% endif %}>LPG/Gas</option>
+                        </select>
+                    </div>
+                    <div class="lf-group">
+                        <label>Plattform</label>
+                        <select name="platform">
+                            <option value="">Alle Plattformen</option>
+                            <option value="kleinanzeigen" {% if f_platform == 'kleinanzeigen' %}selected{% endif %}>Kleinanzeigen</option>
+                            <option value="autoscout24" {% if f_platform == 'autoscout24' %}selected{% endif %}>AutoScout24</option>
+                            <option value="mobile_de" {% if f_platform == 'mobile_de' %}selected{% endif %}>Mobile.de</option>
+                            <option value="autohero" {% if f_platform == 'autohero' %}selected{% endif %}>Autohero</option>
+                            <option value="heycar" {% if f_platform == 'heycar' %}selected{% endif %}>heycar</option>
+                            <option value="pkw_de" {% if f_platform == 'pkw_de' %}selected{% endif %}>pkw.de</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="lf-group">
-                    <label>Modell</label>
-                    <select name="model" id="lfModel">
-                        <option value="">Alle Modelle</option>
-                    </select>
+
+                <!-- Row 2: Preise / KM / Jahr / Sortierung -->
+                <div class="lf-grid lf-grid-sm">
+                    <div class="lf-group">
+                        <label>Preis von (€)</label>
+                        <input type="number" name="price_min" placeholder="Min." value="{{ f_price_min or '' }}" min="0" step="500">
+                    </div>
+                    <div class="lf-group">
+                        <label>Preis bis (€)</label>
+                        <input type="number" name="price_max" placeholder="Max." value="{{ f_price_max or '' }}" min="0" step="500">
+                    </div>
+                    <div class="lf-group">
+                        <label>KM bis</label>
+                        <select name="mileage_max">
+                            <option value="">Beliebig</option>
+                            <option value="10000" {% if f_mileage_max == 10000 %}selected{% endif %}>10.000 km</option>
+                            <option value="25000" {% if f_mileage_max == 25000 %}selected{% endif %}>25.000 km</option>
+                            <option value="50000" {% if f_mileage_max == 50000 %}selected{% endif %}>50.000 km</option>
+                            <option value="75000" {% if f_mileage_max == 75000 %}selected{% endif %}>75.000 km</option>
+                            <option value="100000" {% if f_mileage_max == 100000 %}selected{% endif %}>100.000 km</option>
+                            <option value="150000" {% if f_mileage_max == 150000 %}selected{% endif %}>150.000 km</option>
+                            <option value="200000" {% if f_mileage_max == 200000 %}selected{% endif %}>200.000 km</option>
+                        </select>
+                    </div>
+                    <div class="lf-group">
+                        <label>Baujahr ab</label>
+                        <select name="year_min">
+                            <option value="">Beliebig</option>
+                            {% for y in range(2025, 1989, -1) %}
+                            <option value="{{ y }}" {% if f_year_min == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="lf-group">
+                        <label>Sortierung</label>
+                        <select name="sort">
+                            <option value="newest" {% if f_sort == 'newest' %}selected{% endif %}>Neueste zuerst</option>
+                            <option value="price_asc" {% if f_sort == 'price_asc' %}selected{% endif %}>Preis aufsteigend</option>
+                            <option value="price_desc" {% if f_sort == 'price_desc' %}selected{% endif %}>Preis absteigend</option>
+                            <option value="mileage_asc" {% if f_sort == 'mileage_asc' %}selected{% endif %}>Km niedrigste</option>
+                            <option value="year_desc" {% if f_sort == 'year_desc' %}selected{% endif %}>Neuestes Baujahr</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="lf-group" style="min-width:120px;">
-                    <label>Max. Preis</label>
-                    <input type="number" name="price_max" placeholder="z.B. 15000" value="{{ f_price_max or '' }}">
-                </div>
-                <div class="lf-group" style="min-width:110px;">
-                    <label>Baujahr ab</label>
-                    <input type="number" name="year_min" placeholder="z.B. 2018" value="{{ f_year_min or '' }}">
-                </div>
-                <div style="display:flex;gap:.5rem;">
-                    <button type="submit" class="lf-btn"><i class="bi bi-search"></i> Filtern</button>
-                    {% if f_brand or f_model or f_price_max or f_year_min %}
-                    <a href="{{ url_for('live_feed') }}" class="lf-reset"><i class="bi bi-x-lg"></i></a>
+
+                <!-- Actions -->
+                <div class="lf-actions">
+                    <button type="submit" class="lf-btn-primary">
+                        <i class="bi bi-search"></i> Filtern
+                    </button>
+                    {% if f_brand or f_model or f_price_min or f_price_max or f_year_min or f_mileage_max or f_fuel_type or f_platform %}
+                    <a href="{{ url_for('live_feed') }}" class="lf-btn-reset">
+                        <i class="bi bi-x-circle"></i> Filter zurücksetzen
+                    </a>
                     {% endif %}
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 
-    <!-- Plattform Filter -->
-    <div class="filter-bar">
-        <button class="filter-btn active" data-platform="all">Alle</button>
-        <button class="filter-btn" data-platform="kleinanzeigen">Kleinanzeigen</button>
-        <button class="filter-btn" data-platform="autoscout24">AutoScout24</button>
+    <!-- ===== RESULTS INFO ===== -->
+    <div class="lf-results-bar">
+        <span class="lf-results-text">
+            <strong id="resultCount">{{ total }}</strong> Fahrzeuge gefunden
+            {% if total_pages > 1 %} · Seite <strong>{{ page }}</strong> von <strong>{{ total_pages }}</strong>{% endif %}
+            {% if f_brand %} · <em>{{ f_brand }}{% if f_model %} {{ f_model }}{% endif %}</em>{% endif %}
+            {% if f_fuel_type %} · <em>{{ f_fuel_type }}</em>{% endif %}
+        </span>
+        {% if cars %}
+        <span class="lf-auto-update"><span class="live-indicator" style="width:5px;height:5px;"></span> Auto-Update aktiv</span>
+        {% endif %}
     </div>
 
-    <!-- Feed -->
-    <div class="product-grid" id="liveFeed">
+    <!-- ===== CAR GRID ===== -->
+    <div class="lf-car-grid" id="liveFeed">
         {% for car in cars %}
-        <div class="sahara-card car-item" data-platform="{{ car.platform }}">
-            <div class="card-image-wrapper">
+        {% set platform_map = {
+            'mobile_de': ('Mobile.de', 'badge-mobile'),
+            'autoscout24': ('AutoScout24', 'badge-autoscout'),
+            'kleinanzeigen': ('Kleinanzeigen', 'badge-kleinanzeigen'),
+            'pkw_de': ('pkw.de', 'badge-pkw'),
+            'autohero': ('Autohero', 'badge-autohero'),
+            'heycar': ('heycar', 'badge-heycar'),
+        } %}
+        {% set pm = platform_map.get(car.platform, (car.platform, '')) %}
+        <article class="lf-card car-item" data-platform="{{ car.platform }}">
+            <!-- Image -->
+            <a href="{{ url_for('car_detail', car_id=car.id) }}" class="lf-card-img-wrap">
                 {% if car.image_url %}
                 <img src="{{ car.image_url }}" alt="{{ car.title }}" loading="lazy"
-                     onerror="this.parentElement.innerHTML='<div class=card-image-placeholder><i class=bi bi-car-front></i></div>'"
-                     referrerpolicy="no-referrer">
+                     referrerpolicy="no-referrer"
+                     onerror="this.parentElement.innerHTML='<div class=lf-img-placeholder><i class=bi\ bi-car-front></i></div>'">
                 {% else %}
-                <div class="card-image-placeholder">
-                    <i class="bi bi-car-front"></i>
-                </div>
+                <div class="lf-img-placeholder"><i class="bi bi-car-front"></i></div>
                 {% endif %}
-                {% set platform_map = {
-                    'mobile_de': ('Mobile.de', 'badge-mobile'),
-                    'autoscout24': ('AutoScout24', 'badge-autoscout'),
-                    'kleinanzeigen': ('Kleinanzeigen', 'badge-kleinanzeigen'),
-                    'pkw_de': ('pkw.de', 'badge-pkw'),
-                    'autohero': ('Autohero', 'badge-autohero'),
-                    'heycar': ('heycar', 'badge-heycar'),
-                } %}
-                {% set pm = platform_map.get(car.platform, (car.platform, '')) %}
-                <span class="card-badge {{ pm[1] }}">{{ pm[0] }}</span>
-            </div>
-            <div class="card-body-sahara">
-                <h3 class="card-title-sahara">
+                <span class="lf-platform-badge {{ pm[1] }}">{{ pm[0] }}</span>
+            </a>
+
+            <!-- Body -->
+            <div class="lf-card-body">
+                <h3 class="lf-car-title">
                     <a href="{{ url_for('car_detail', car_id=car.id) }}">{{ car.title or 'Unbekannt' }}</a>
                 </h3>
-                <div class="card-price">
-                    {% if car.price %}{{ "{:,.0f}".format(car.price).replace(",", ".") }} &euro;{% else %}Auf Anfrage{% endif %}
+                <div class="lf-price">
+                    {% if car.price %}{{ "{:,.0f}".format(car.price).replace(",", ".") }} €{% else %}Auf Anfrage{% endif %}
                 </div>
-                <div class="card-specs">
-                    {% if car.year %}<span class="spec-tag"><i class="bi bi-calendar3"></i> {{ car.year }}</span>{% endif %}
-                    {% if car.mileage %}<span class="spec-tag"><i class="bi bi-speedometer2"></i> {{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</span>{% endif %}
-                    {% if car.fuel_type %}<span class="spec-tag"><i class="bi bi-fuel-pump"></i> {{ car.fuel_type }}</span>{% endif %}
-                    {% if car.power %}<span class="spec-tag"><i class="bi bi-lightning"></i> {{ car.power }}</span>{% endif %}
-                    {% if car.transmission %}<span class="spec-tag"><i class="bi bi-gear"></i> {{ car.transmission }}</span>{% endif %}
-                    {% if car.color %}<span class="spec-tag"><i class="bi bi-palette"></i> {{ car.color }}</span>{% endif %}
+
+                <!-- Specs Grid -->
+                <div class="lf-specs">
+                    {% if car.year %}
+                    <div class="lf-spec"><i class="bi bi-calendar3"></i><span>{{ car.year }}</span></div>
+                    {% endif %}
+                    {% if car.mileage %}
+                    <div class="lf-spec lf-spec--highlight"><i class="bi bi-speedometer2"></i><span>{{ "{:,.0f}".format(car.mileage).replace(",", ".") }} km</span></div>
+                    {% endif %}
+                    {% if car.fuel_type %}
+                    <div class="lf-spec"><i class="bi bi-fuel-pump"></i><span>{{ car.fuel_type|capitalize }}</span></div>
+                    {% endif %}
+                    {% if car.power %}
+                    <div class="lf-spec"><i class="bi bi-lightning-charge"></i><span>{{ car.power }}</span></div>
+                    {% endif %}
+                    {% if car.transmission %}
+                    <div class="lf-spec"><i class="bi bi-gear-wide-connected"></i><span>{{ car.transmission }}</span></div>
+                    {% endif %}
+                    {% if car.color %}
+                    <div class="lf-spec"><i class="bi bi-palette2"></i><span>{{ car.color }}</span></div>
+                    {% endif %}
                 </div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:.8rem;color:var(--color-taupe);">
-                    {% if car.location %}
-                    <span><i class="bi bi-geo-alt"></i> {{ car.location }}</span>
-                    {% endif %}
-                    {% if car.seller_type %}
-                    <span>&middot; <i class="bi bi-person"></i> {{ car.seller_type }}</span>
-                    {% endif %}
-                    {% if car.first_seen %}
-                    <span>&middot; <i class="bi bi-clock"></i> {{ car.first_seen.strftime('%d.%m. %H:%M') if car.first_seen.strftime is defined else car.first_seen }}</span>
-                    {% endif %}
+
+                <!-- Meta -->
+                <div class="lf-meta">
+                    {% if car.location %}<span><i class="bi bi-geo-alt"></i> {{ car.location }}</span>{% endif %}
+                    {% if car.seller_type %}<span><i class="bi bi-person-badge"></i> {{ car.seller_type }}</span>{% endif %}
+                    {% if car.first_seen %}<span><i class="bi bi-clock"></i>
+                        {{ car.first_seen.strftime('%d.%m. %H:%M') if car.first_seen.strftime is defined else car.first_seen }}
+                    </span>{% endif %}
                 </div>
-                <div class="card-actions" style="margin-top:10px;">
+
+                <!-- Actions -->
+                <div class="lf-card-actions">
                     {% if car.url %}
-                    <a href="{{ car.url }}" target="_blank" class="btn-sahara-outline btn-sahara-sm">
+                    <a href="{{ car.url }}" target="_blank" rel="noopener" class="lf-btn-outline">
                         <i class="bi bi-box-arrow-up-right"></i> Original
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('car_detail', car_id=car.id) }}" class="btn-sahara btn-sahara-sm" style="flex:1; text-align:center;">
+                    <a href="{{ url_for('car_detail', car_id=car.id) }}" class="lf-btn-primary-sm">
                         <i class="bi bi-eye"></i> Details
                     </a>
                 </div>
             </div>
-        </div>
+        </article>
         {% endfor %}
     </div>
 
     {% if not cars %}
-    <div class="empty-state" id="emptyState">
-        <div class="sahara-spinner" style="width:32px;height:32px;margin-bottom:var(--spacing-md);"></div>
-        {% if f_brand %}
-        <h3>Keine {{ f_brand }}{% if f_model %} {{ f_model }}{% endif %} gefunden</h3>
-        <p>Versuche andere Filter oder <a href="{{ url_for('live_feed') }}" style="color:var(--color-bronze);text-decoration:underline;">zeige alle Autos</a></p>
+    <div class="lf-empty" id="emptyState">
+        {% if f_brand or f_price_max or f_fuel_type %}
+        <div style="font-size:2rem;margin-bottom:1rem;">🔍</div>
+        <h3>Keine Ergebnisse</h3>
+        <p>Versuch andere Filter oder <a href="{{ url_for('live_feed') }}">zeige alle Autos</a></p>
         {% else %}
-        <h3>Warte auf neue Inserate...</h3>
-        <p>Neue Fahrzeuge werden automatisch angezeigt</p>
+        <div style="font-size:2.5rem;margin-bottom:1rem;">🚗</div>
+        <h3>Noch keine Fahrzeuge</h3>
+        <p style="margin-bottom:1.5rem;">Klick auf <strong>Demo-Daten laden</strong> um Beispiel-Inserate zu sehen,<br>oder warte bis der Scraper neue Inserate findet.</p>
+        <button onclick="seedDemoData()" class="lf-btn-primary" style="margin:0 auto;display:inline-flex;" id="seedBtn">
+            <i class="bi bi-download"></i>&nbsp; Demo-Daten laden
+        </button>
+        <p style="margin-top:1rem;font-size:.75rem;color:#aaa;">Lädt ~120 realistische Beispiel-Inserate</p>
         {% endif %}
     </div>
     {% endif %}
+
+    {% if total_pages > 1 %}
+    {% set args = request.args.to_dict() %}
+    {% macro page_url(p) %}{% set _ = args.update({'page': p}) %}{{ url_for('live_feed', **args) }}{% endmacro %}
+    <nav class="lf-pagination" aria-label="Seitennavigation">
+        <a class="lf-page-btn {% if page <= 1 %}disabled{% endif %}"
+           {% if page > 1 %}href="{{ page_url(page - 1) }}"{% endif %}>
+            <i class="bi bi-chevron-left"></i> Vorherige
+        </a>
+
+        <div class="lf-page-numbers">
+            {# Zeige: 1 ... (page-1) page (page+1) ... last #}
+            {% set pages_to_show = [] %}
+            {% set _ = pages_to_show.append(1) %}
+            {% if page - 1 > 1 %}{% set _ = pages_to_show.append(page - 1) %}{% endif %}
+            {% if page != 1 and page != total_pages %}{% set _ = pages_to_show.append(page) %}{% endif %}
+            {% if page + 1 < total_pages %}{% set _ = pages_to_show.append(page + 1) %}{% endif %}
+            {% if total_pages > 1 %}{% set _ = pages_to_show.append(total_pages) %}{% endif %}
+
+            {% set seen = [] %}
+            {% for p in pages_to_show %}
+                {% if p not in seen %}
+                    {% set _ = seen.append(p) %}
+                    {% if loop.index0 > 0 and p - seen[loop.index0 - 1] > 1 %}
+                    <span class="lf-page-ellipsis">...</span>
+                    {% endif %}
+                    <a class="lf-page-num {% if p == page %}active{% endif %}"
+                       {% if p != page %}href="{{ page_url(p) }}"{% endif %}>{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <a class="lf-page-btn {% if page >= total_pages %}disabled{% endif %}"
+           {% if page < total_pages %}href="{{ page_url(page + 1) }}"{% endif %}>
+            Nächste <i class="bi bi-chevron-right"></i>
+        </a>
+    </nav>
+    {% endif %}
 </section>
+
+<!-- ===== STYLES ===== -->
+<style>
+/* ---------- PAGE HEADER ---------- */
+.lf-page-header { margin-bottom: 1.2rem; }
+.lf-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .6rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.lf-count-badge {
+    background: var(--color-black);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+.lf-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .78rem;
+    color: var(--color-taupe);
+}
+.lf-status-dot {
+    width: 6px; height: 6px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: livePulse 2s infinite;
+    flex-shrink: 0;
+}
+
+/* ---------- FILTER PANEL ---------- */
+.lf-filter-panel {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    margin-bottom: 1rem;
+}
+.lf-filter-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .85rem 1.1rem;
+    cursor: pointer;
+    font-size: .82rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    user-select: none;
+    position: relative;
+}
+.lf-filter-toggle:hover { background: var(--color-sand); }
+.lf-filter-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    background: var(--color-black);
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+#filterChevron { transition: transform .25s ease; font-size: .85rem; }
+#filterChevron.open { transform: rotate(180deg); }
+
+.lf-filter-body {
+    display: none;
+    padding: 1rem 1.1rem 1.2rem;
+    border-top: 1px solid var(--color-border);
+}
+.lf-filter-body.open { display: block; }
+
+/* ---------- FILTER GRID ---------- */
+.lf-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .7rem;
+    margin-bottom: .7rem;
+}
+@media(min-width: 640px) { .lf-grid { grid-template-columns: repeat(4, 1fr); } }
+.lf-grid-sm { grid-template-columns: repeat(2, 1fr); }
+@media(min-width: 640px) { .lf-grid-sm { grid-template-columns: repeat(5, 1fr); } }
+
+.lf-group label {
+    display: block;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--color-taupe);
+    margin-bottom: .3rem;
+}
+.lf-group select, .lf-group input {
+    width: 100%;
+    padding: .55rem .7rem;
+    border: 1px solid var(--color-border);
+    font-size: .85rem;
+    font-family: var(--font-body);
+    background: #fff;
+    color: var(--color-black);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.lf-group select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%23555'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .8rem center; padding-right: 2rem; }
+.lf-group select:focus, .lf-group input:focus { border-color: var(--color-black); }
+
+.lf-actions {
+    display: flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-top: .6rem;
+    border-top: 1px solid var(--color-border);
+    margin-top: .2rem;
+}
+.lf-btn-primary {
+    background: var(--color-black);
+    color: #fff;
+    border: 1px solid var(--color-black);
+    padding: .6rem 1.6rem;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.lf-btn-primary:hover { background: #333; }
+.lf-btn-reset {
+    color: var(--color-taupe);
+    border: 1px solid var(--color-border);
+    padding: .6rem 1.2rem;
+    font-size: .78rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-body);
+}
+.lf-btn-reset:hover { border-color: var(--color-black); color: var(--color-black); }
+
+/* ---------- RESULTS BAR ---------- */
+.lf-results-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    font-size: .8rem;
+    color: var(--color-taupe);
+    padding-bottom: .8rem;
+    margin-bottom: .6rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.lf-results-text strong { color: var(--color-black); }
+.lf-auto-update {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--color-taupe);
+}
+
+/* ---------- CAR GRID ---------- */
+.lf-car-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1px;
+    background: var(--color-border);
+    border: 1px solid var(--color-border);
+}
+@media(min-width: 480px) { .lf-car-grid { grid-template-columns: repeat(2, 1fr); } }
+@media(min-width: 900px) { .lf-car-grid { grid-template-columns: repeat(3, 1fr); } }
+@media(min-width: 1200px) { .lf-car-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* ---------- CARD ---------- */
+.lf-card {
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.lf-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.08); z-index: 2; position: relative; }
+
+/* Image */
+.lf-card-img-wrap {
+    display: block;
+    position: relative;
+    aspect-ratio: 4/3;
+    background: var(--color-sand);
+    overflow: hidden;
+}
+.lf-card-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform .4s ease;
+}
+.lf-card:hover .lf-card-img-wrap img { transform: scale(1.04); }
+.lf-img-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    color: var(--color-taupe);
+}
+.lf-platform-badge {
+    position: absolute;
+    bottom: .6rem; left: .6rem;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+}
+
+/* Body */
+.lf-card-body {
+    padding: .9rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: .5rem;
+}
+.lf-car-title {
+    font-family: var(--font-heading);
+    font-size: .98rem;
+    line-height: 1.3;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.lf-car-title a { color: var(--color-black); text-decoration: none; }
+.lf-car-title a:hover { color: var(--color-taupe); }
+.lf-price {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    color: var(--color-black);
+    letter-spacing: -.01em;
+}
+
+/* Specs */
+.lf-specs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 6px;
+}
+.lf-spec {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .76rem;
+    color: var(--color-taupe);
+    padding: 3px 7px;
+    background: var(--color-sand);
+}
+.lf-spec i { font-size: .8rem; flex-shrink: 0; }
+.lf-spec span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lf-spec--highlight {
+    background: var(--color-black);
+    color: #fff;
+}
+
+/* Meta */
+.lf-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: .72rem;
+    color: var(--color-taupe);
+    padding-top: .3rem;
+    border-top: 1px solid var(--color-border);
+}
+.lf-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* Card Actions */
+.lf-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: .5rem;
+}
+.lf-btn-outline {
+    flex: 1;
+    text-align: center;
+    padding: .5rem .6rem;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    border: 1px solid var(--color-border);
+    color: var(--color-taupe);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-family: var(--font-body);
+    transition: all .2s;
+}
+.lf-btn-outline:hover { border-color: var(--color-black); color: var(--color-black); }
+.lf-btn-primary-sm {
+    flex: 2;
+    text-align: center;
+    padding: .5rem .8rem;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    background: var(--color-black);
+    color: #fff;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-family: var(--font-body);
+    transition: background .2s;
+}
+.lf-btn-primary-sm:hover { background: #333; color: #fff; }
+
+/* Empty */
+.lf-empty {
+    text-align: center;
+    padding: 5rem 1rem;
+    color: var(--color-taupe);
+}
+.lf-empty h3 { font-family: var(--font-heading); font-size: 1.5rem; color: var(--color-black); margin-bottom: .6rem; }
+.lf-empty a { color: var(--color-black); text-decoration: underline; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin .7s linear infinite; }
+
+/* New car animation */
+.lf-card.new-car { animation: fadeInDown .4s ease forwards; border: 2px solid var(--color-black); }
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile tweaks */
+@media(max-width: 479px) {
+    .lf-specs { grid-template-columns: 1fr 1fr; }
+    .lf-price { font-size: 1.1rem; }
+    .lf-car-title { font-size: .92rem; }
+}
+
+/* ---------- PAGINATION ---------- */
+.lf-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-top: 2.2rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--color-border);
+}
+.lf-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: .55rem 1rem;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--color-black);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    background: #fff;
+    transition: all .2s;
+    font-family: var(--font-body);
+}
+.lf-page-btn:hover:not(.disabled) {
+    background: var(--color-black);
+    color: #fff;
+    border-color: var(--color-black);
+}
+.lf-page-btn.disabled {
+    opacity: .35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.lf-page-numbers {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin: 0 .5rem;
+}
+.lf-page-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 .6rem;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--color-black);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    background: #fff;
+    font-family: var(--font-body);
+    transition: all .2s;
+}
+.lf-page-num:hover:not(.active) {
+    border-color: var(--color-black);
+}
+.lf-page-num.active {
+    background: var(--color-black);
+    color: #fff;
+    border-color: var(--color-black);
+    font-weight: 700;
+    pointer-events: none;
+}
+.lf-page-ellipsis {
+    color: var(--color-taupe);
+    padding: 0 .3rem;
+    font-size: .85rem;
+}
+@media(max-width: 479px) {
+    .lf-page-btn { padding: .5rem .7rem; font-size: .72rem; }
+    .lf-page-num { min-width: 34px; height: 34px; font-size: .8rem; }
+    .lf-page-btn span, .lf-page-btn:not(:has(i)) { display: none; }
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-let activeFilter = 'all';
 let lastCarId = {{ cars[0].id if cars else 0 }};
 
-// SSE für lokale Nutzung (optional, fällt graceful zurück)
-try {
-    const evtSource = new EventSource('/api/stream');
-    evtSource.onmessage = function(event) {
-        const car = JSON.parse(event.data);
-        if (car.id > lastCarId) lastCarId = car.id;
-        addCarToFeed(car);
-        updateCount(1);
-    };
-    evtSource.onerror = function() { evtSource.close(); };
-} catch(e) {}
+// ---- Aktive Filter aus Server-Zustand ----
+const ACTIVE_FILTERS = {
+    brand:      '{{ f_brand or "" }}'.toLowerCase(),
+    model:      '{{ f_model or "" }}'.toLowerCase(),
+    fuel_type:  '{{ f_fuel_type or "" }}'.toLowerCase(),
+    platform:   '{{ f_platform or "" }}',
+    price_min:  {{ f_price_min or 0 }},
+    price_max:  {{ f_price_max or 0 }},
+    year_min:   {{ f_year_min or 0 }},
+    mileage_max:{{ f_mileage_max or 0 }},
+};
 
-// Auto-Polling: alle 15s neue Autos aus DB holen (funktioniert auch auf Render)
-setInterval(async () => {
-    try {
-        const res = await fetch('/api/recent?after_id=' + lastCarId + '&limit=20');
-        const cars = await res.json();
-        if (cars.length > 0) {
-            cars.reverse().forEach(car => {
-                addCarToFeed(car);
-                if (car.id > lastCarId) lastCarId = car.id;
-            });
-            updateCount(cars.length);
-        }
-    } catch(e) {}
-}, 15000);
-
-function updateCount(add) {
-    const countEl = document.getElementById('totalCount');
-    const current = parseInt(countEl.textContent) || 0;
-    countEl.textContent = (current + add) + ' gefunden';
-    const empty = document.getElementById('emptyState');
-    if (empty) empty.remove();
-}
-
-function addCarToFeed(car) {
-    const feed = document.getElementById('liveFeed');
-    const el = document.createElement('div');
-    el.className = 'sahara-card car-item fade-in-card';
-    el.dataset.platform = car.platform;
-
-    if (activeFilter !== 'all' && car.platform !== activeFilter) {
-        el.style.display = 'none';
+// ---- Prüft ob ein Auto den aktiven Filtern entspricht ----
+function matchesFilter(car) {
+    if (ACTIVE_FILTERS.brand) {
+        const b = (car.brand || car.title || '').toLowerCase();
+        if (!b.includes(ACTIVE_FILTERS.brand)) return false;
     }
-
-    const badgeClass = {
-        'mobile_de':'badge-mobile','autoscout24':'badge-autoscout','kleinanzeigen':'badge-kleinanzeigen',
-        'pkw_de':'badge-pkw','autohero':'badge-autohero','heycar':'badge-heycar'
-    }[car.platform] || '';
-    const platformName = {
-        'mobile_de':'Mobile.de','autoscout24':'AutoScout24','kleinanzeigen':'Kleinanzeigen',
-        'pkw_de':'pkw.de','autohero':'Autohero','heycar':'heycar'
-    }[car.platform] || car.platform;
-    const priceStr = car.price ? car.price.toLocaleString('de-DE') + ' \u20AC' : 'Auf Anfrage';
-    const mileageStr = car.mileage ? car.mileage.toLocaleString('de-DE') + ' km' : '';
-    const imgSrc = car.image_url || '';
-    const detailUrl = '/car/' + car.id;
-
-    const imgHtml = imgSrc
-        ? `<img src="${imgSrc}" alt="${car.title||''}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<div class=card-image-placeholder><i class=bi bi-car-front></i></div>'">`
-        : '<div class="card-image-placeholder"><i class="bi bi-car-front"></i></div>';
-
-    el.innerHTML = `
-        <div class="card-image-wrapper">
-            ${imgHtml}
-            <span class="card-badge ${badgeClass}">${platformName}</span>
-            <span class="badge-new">NEU</span>
-        </div>
-        <div class="card-body-sahara">
-            <h3 class="card-title-sahara"><a href="${detailUrl}">${car.title || 'Unbekannt'}</a></h3>
-            <div class="card-price">${priceStr}</div>
-            <div class="card-specs">
-                ${car.year ? `<span class="spec-tag">${car.year}</span>` : ''}
-                ${mileageStr ? `<span class="spec-tag">${mileageStr}</span>` : ''}
-                ${car.fuel_type ? `<span class="spec-tag">${car.fuel_type}</span>` : ''}
-                ${car.power ? `<span class="spec-tag">${car.power}</span>` : ''}
-            </div>
-            ${car.location ? `<div class="card-location"><i class="bi bi-geo-alt"></i> ${car.location}</div>` : ''}
-            <div class="card-actions">
-                ${car.url ? `<a href="${car.url}" target="_blank" class="btn-sahara-outline btn-sahara-sm">Ansehen</a>` : ''}
-                <a href="${detailUrl}" class="btn-sahara btn-sahara-sm" style="flex:1;text-align:center;">Details</a>
-            </div>
-        </div>
-    `;
-
-    el.classList.add('new-car-glow');
-    feed.insertBefore(el, feed.firstChild);
-
-    setTimeout(() => {
-        const badge = el.querySelector('.badge-new');
-        if (badge) badge.remove();
-    }, 8000);
+    if (ACTIVE_FILTERS.model) {
+        const m = ((car.model || '') + ' ' + (car.title || '')).toLowerCase();
+        if (!m.includes(ACTIVE_FILTERS.model)) return false;
+    }
+    if (ACTIVE_FILTERS.fuel_type) {
+        const f = (car.fuel_type || '').toLowerCase();
+        if (!f.includes(ACTIVE_FILTERS.fuel_type)) return false;
+    }
+    if (ACTIVE_FILTERS.platform && car.platform !== ACTIVE_FILTERS.platform) return false;
+    if (ACTIVE_FILTERS.price_min && car.price && car.price < ACTIVE_FILTERS.price_min) return false;
+    if (ACTIVE_FILTERS.price_max && car.price && car.price > ACTIVE_FILTERS.price_max) return false;
+    if (ACTIVE_FILTERS.year_min  && car.year  && car.year  < ACTIVE_FILTERS.year_min)  return false;
+    if (ACTIVE_FILTERS.mileage_max && car.mileage && car.mileage > ACTIVE_FILTERS.mileage_max) return false;
+    return true;
 }
 
-// Filter
-document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        activeFilter = this.dataset.platform;
-        document.querySelectorAll('.car-item').forEach(item => {
-            item.style.display = (activeFilter === 'all' || item.dataset.platform === activeFilter) ? '' : 'none';
-        });
-    });
+// ---- Filter Toggle ----
+const filterToggle  = document.getElementById('filterToggle');
+const filterBody    = document.getElementById('filterBody');
+const filterChevron = document.getElementById('filterChevron');
+
+{% if f_brand or f_model or f_price_min or f_price_max or f_year_min or f_mileage_max or f_fuel_type or f_platform %}
+filterBody.classList.add('open');
+filterChevron.classList.add('open');
+{% endif %}
+
+filterToggle.addEventListener('click', () => {
+    filterBody.classList.toggle('open');
+    filterChevron.classList.toggle('open');
 });
 
-// Status polling
-setInterval(async () => {
-    try {
-        const res = await fetch('/api/scraper-status');
-        const s = await res.json();
-        const p = document.getElementById('currentPlatform');
-        if (p) p.textContent = s.current_platform || '...';
-        const l = document.getElementById('lastScrape');
-        if (l) l.textContent = s.last_scrape || '';
-    } catch(e) {}
-}, 5000);
-
-// Dynamische Modell-Auswahl
+// ---- Dynamic Modell select ----
 const CAR_DATA = {{ car_data | tojson }};
 function updateLfModels() {
     const brand = document.getElementById('lfBrand').value;
-    const sel = document.getElementById('lfModel');
+    const sel   = document.getElementById('lfModel');
     sel.innerHTML = '<option value="">Alle Modelle</option>';
     if (brand && CAR_DATA[brand]) {
         CAR_DATA[brand].forEach(m => {
@@ -298,5 +798,149 @@ function updateLfModels() {
     }
 }
 updateLfModels();
+
+// ---- SSE ----
+try {
+    const evtSource = new EventSource('/api/stream');
+    evtSource.onmessage = e => {
+        const car = JSON.parse(e.data);
+        if (car.id > lastCarId) lastCarId = car.id;
+        if (matchesFilter(car)) {
+            addCarToFeed(car);
+            bumpCount(1);
+        }
+    };
+    evtSource.onerror = () => evtSource.close();
+} catch(e) {}
+
+// ---- Polling every 15s — mit Filterparametern ----
+function buildPollUrl() {
+    const p = new URLSearchParams({ after_id: lastCarId, limit: 20 });
+    if (ACTIVE_FILTERS.brand)    p.set('brand', '{{ f_brand or "" }}');
+    if (ACTIVE_FILTERS.platform) p.set('platform', ACTIVE_FILTERS.platform);
+    if (ACTIVE_FILTERS.price_min)    p.set('price_min', ACTIVE_FILTERS.price_min);
+    if (ACTIVE_FILTERS.price_max)    p.set('price_max', ACTIVE_FILTERS.price_max);
+    if (ACTIVE_FILTERS.year_min)     p.set('year_min', ACTIVE_FILTERS.year_min);
+    if (ACTIVE_FILTERS.mileage_max)  p.set('mileage_max', ACTIVE_FILTERS.mileage_max);
+    return '/api/recent?' + p.toString();
+}
+
+setInterval(async () => {
+    try {
+        const res  = await fetch(buildPollUrl());
+        const cars = await res.json();
+        const matched = cars.filter(matchesFilter);
+        if (matched.length > 0) {
+            matched.reverse().forEach(car => {
+                addCarToFeed(car);
+                if (car.id > lastCarId) lastCarId = car.id;
+            });
+            bumpCount(matched.length);
+        }
+        // lastCarId auch ohne Match hochsetzen damit keine Duplikate
+        cars.forEach(c => { if (c.id > lastCarId) lastCarId = c.id; });
+    } catch(e) {}
+}, 15000);
+
+function bumpCount(n) {
+    ['totalCount','resultCount'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = (parseInt(el.textContent) || 0) + n;
+    });
+    const em = document.getElementById('emptyState');
+    if (em) em.remove();
+}
+
+// ---- Card HTML ----
+function addCarToFeed(car) {
+    const feed = document.getElementById('liveFeed');
+    const el   = document.createElement('article');
+    el.className = 'lf-card car-item new-car';
+    el.dataset.platform = car.platform;
+
+    const badgeCls = {
+        'mobile_de':'badge-mobile','autoscout24':'badge-autoscout','kleinanzeigen':'badge-kleinanzeigen',
+        'pkw_de':'badge-pkw','autohero':'badge-autohero','heycar':'badge-heycar'
+    }[car.platform] || '';
+    const platName = {
+        'mobile_de':'Mobile.de','autoscout24':'AutoScout24','kleinanzeigen':'Kleinanzeigen',
+        'pkw_de':'pkw.de','autohero':'Autohero','heycar':'heycar'
+    }[car.platform] || car.platform;
+
+    const priceStr   = car.price   ? car.price.toLocaleString('de-DE') + ' €' : 'Auf Anfrage';
+    const mileageStr = car.mileage ? car.mileage.toLocaleString('de-DE') + ' km' : null;
+    const detailUrl  = '/car/' + car.id;
+    const imgSrc     = car.image_url || '';
+
+    const imgHtml = imgSrc
+        ? `<img src="${imgSrc}" alt="${car.title||''}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<div class=lf-img-placeholder><i class=bi\\ bi-car-front></i></div>'">`
+        : `<div class="lf-img-placeholder"><i class="bi bi-car-front"></i></div>`;
+
+    const specs = [
+        car.year         ? `<div class="lf-spec"><i class="bi bi-calendar3"></i><span>${car.year}</span></div>` : '',
+        mileageStr       ? `<div class="lf-spec lf-spec--highlight"><i class="bi bi-speedometer2"></i><span>${mileageStr}</span></div>` : '',
+        car.fuel_type    ? `<div class="lf-spec"><i class="bi bi-fuel-pump"></i><span>${car.fuel_type}</span></div>` : '',
+        car.power        ? `<div class="lf-spec"><i class="bi bi-lightning-charge"></i><span>${car.power}</span></div>` : '',
+        car.transmission ? `<div class="lf-spec"><i class="bi bi-gear-wide-connected"></i><span>${car.transmission}</span></div>` : '',
+        car.color        ? `<div class="lf-spec"><i class="bi bi-palette2"></i><span>${car.color}</span></div>` : '',
+    ].join('');
+
+    const meta = [
+        car.location    ? `<span><i class="bi bi-geo-alt"></i> ${car.location}</span>` : '',
+        car.seller_type ? `<span><i class="bi bi-person-badge"></i> ${car.seller_type}</span>` : '',
+    ].join('');
+
+    el.innerHTML = `
+        <a href="${detailUrl}" class="lf-card-img-wrap">
+            ${imgHtml}
+            <span class="badge-new" style="position:absolute;top:.6rem;right:.6rem;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;background:#0A0A0A;color:#fff;">NEU</span>
+            <span class="lf-platform-badge ${badgeCls}">${platName}</span>
+        </a>
+        <div class="lf-card-body">
+            <h3 class="lf-car-title"><a href="${detailUrl}">${car.title || 'Unbekannt'}</a></h3>
+            <div class="lf-price">${priceStr}</div>
+            <div class="lf-specs">${specs}</div>
+            ${meta ? `<div class="lf-meta">${meta}</div>` : ''}
+            <div class="lf-card-actions">
+                ${car.url ? `<a href="${car.url}" target="_blank" rel="noopener" class="lf-btn-outline"><i class="bi bi-box-arrow-up-right"></i> Original</a>` : ''}
+                <a href="${detailUrl}" class="lf-btn-primary-sm"><i class="bi bi-eye"></i> Details</a>
+            </div>
+        </div>`;
+
+    feed.insertBefore(el, feed.firstChild);
+
+    setTimeout(() => {
+        const badge = el.querySelector('.badge-new');
+        if (badge) badge.remove();
+        el.classList.remove('new-car');
+    }, 8000);
+}
+
+// ---- Scraper Status ----
+setInterval(async () => {
+    try {
+        const s = await (await fetch('/api/scraper-status')).json();
+        const p = document.getElementById('currentPlatform');
+        if (p) p.textContent = s.current_platform || '...';
+    } catch(e) {}
+}, 5000);
+
+// ---- Demo-Daten laden ----
+async function seedDemoData() {
+    const btn = document.getElementById('seedBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i>&nbsp; Lade...'; }
+    try {
+        const res = await fetch('/api/seed-demo', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+        const data = await res.json();
+        if (data.stored > 0) {
+            window.location.reload();
+        } else {
+            if (btn) btn.innerHTML = '<i class="bi bi-check"></i>&nbsp; Daten vorhanden — Seite neu laden';
+            setTimeout(() => window.location.reload(), 1000);
+        }
+    } catch(e) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-download"></i>&nbsp; Demo-Daten laden'; }
+    }
+}
 </script>
 {% endblock %}

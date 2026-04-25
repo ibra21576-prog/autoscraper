@@ -145,8 +145,24 @@ def live_scraper_loop(app):
     logger.info("Live-Scraper gestoppt")
 
 
+def _seed_if_empty(app):
+    """Befüllt die DB mit Demo-Daten wenn sie komplett leer ist."""
+    import time
+    time.sleep(3)
+    with app.app_context():
+        from models import Car
+        count = Car.query.count()
+        if count == 0:
+            logger.info("[LIVE] DB leer — lade Demo-Daten...")
+            from services.demo_data import seed_demo_data
+            stored, _ = seed_demo_data(app, count=120)
+            logger.info(f"[LIVE] {stored} Demo-Fahrzeuge geladen")
+
+
 def start_live_scraper(app):
     """Live-Scraper als Daemon-Thread starten."""
+    # Demo-Seed im Hintergrund falls DB leer
+    threading.Thread(target=_seed_if_empty, args=(app,), daemon=True).start()
     thread = threading.Thread(target=live_scraper_loop, args=(app,), daemon=True)
     thread.start()
     logger.info("Live-Scraper Thread gestartet")
