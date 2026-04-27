@@ -667,18 +667,39 @@ def start_scheduler():
 
 
 # Startup: Scheduler + Live-Scraper mit Fehlerbehandlung
+# Live-Scraper läuft IMMER (LIVE_SCRAPE_ENABLED wird ignoriert), da der
+# Scraper selbst sauber mit Fehlern umgeht und automatisch auf Demo-
+# Simulation umschaltet wenn echte Portale blocken.
 def _startup():
     try:
         start_scheduler()
     except Exception as e:
         logger.error(f"Scheduler-Start fehlgeschlagen: {e}")
 
-    if app.config.get('LIVE_SCRAPE_ENABLED', True):
+    try:
+        from services.live_scraper import start_live_scraper
+        start_live_scraper(app)
+        logger.info("✅ Live-Scraper gestartet")
+    except Exception as e:
+        logger.error(f"Live-Scraper-Start fehlgeschlagen: {e}")
+
+
+def _ensure_live_scraper():
+    """Self-Healing: prüft bei jedem Request ob der Scraper-Thread lebt."""
+    from services.live_scraper import scraper_status, start_live_scraper
+    if not scraper_status.get('running'):
         try:
-            from services.live_scraper import start_live_scraper
             start_live_scraper(app)
+            logger.warning("Live-Scraper war tot — neu gestartet")
         except Exception as e:
-            logger.error(f"Live-Scraper-Start fehlgeschlagen: {e}")
+            logger.error(f"Live-Scraper-Restart fehlgeschlagen: {e}")
+
+
+@app.before_request
+def _check_scraper_alive():
+    """Bei jedem Request prüfen ob der Scraper noch läuft (für Render Free Tier)."""
+    if request.endpoint in ('live_feed', 'api_recent', 'stream', 'api_scraper_status'):
+        _ensure_live_scraper()
 
 
 _startup()
