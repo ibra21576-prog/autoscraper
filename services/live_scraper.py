@@ -83,41 +83,35 @@ def live_scraper_loop(app):
     scraper_status['current_platform'] = 'kleinanzeigen'
     logger.info("Live-Scraper gestartet")
 
-    # Wie oft hintereinander hat echter Scraper versagt?
-    consecutive_failures = 0
     # Demo-Simulation: alle SIM_INTERVAL Sekunden ein neues Auto
-    SIM_INTERVAL = 45  # Sekunden zwischen zwei simulierten Inseraten
-
-    last_sim_time = 0  # wann wurde zuletzt ein Demo-Auto gesendet
+    SIM_INTERVAL = 25  # Sekunden zwischen zwei simulierten Inseraten
+    last_sim_time = 0
+    iteration = 0
 
     while scraper_status['running']:
+        iteration += 1
         now = time.time()
 
-        # ── Echter Scraper-Versuch ────────────────────────────────────
-        try:
-            results = scraper.search(page=1)
-        except Exception as e:
-            logger.debug(f"Scraper-Exception: {e}")
-            results = []
-
+        # ── Echter Scraper-Versuch (nur jede 4. Iteration um Last zu sparen) ──
         real_added = 0
-        for car_data in results:
-            title_lower = (car_data.get('title') or '').lower()
-            if any(t in title_lower for t in ('suche ', 'gesuch', '[suche]', 'wird gesucht', ' suche ')):
-                continue
-            if _save_and_broadcast(app, car_data):
-                real_added += 1
+        if iteration % 4 == 1:
+            try:
+                results = scraper.search(page=1)
+                for car_data in results:
+                    title_lower = (car_data.get('title') or '').lower()
+                    if any(t in title_lower for t in ('suche ', 'gesuch', '[suche]', 'wird gesucht', ' suche ')):
+                        continue
+                    if _save_and_broadcast(app, car_data):
+                        real_added += 1
+                if real_added > 0:
+                    logger.info(f"[LIVE] {real_added} echte Inserate gefunden")
+            except Exception as e:
+                logger.debug(f"Scraper-Exception: {e}")
 
-        if real_added > 0:
-            consecutive_failures = 0
-            scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
-            logger.info(f"[LIVE] {real_added} echte Inserate gefunden")
-        else:
-            consecutive_failures += 1
-
-        # ── Demo-Simulation als Fallback ─────────────────────────────
-        # Greift, wenn echter Scraper seit ≥3 Versuchen nichts liefert
-        if consecutive_failures >= 3 and (now - last_sim_time) >= SIM_INTERVAL:
+        # ── Demo-Simulation IMMER ALS FALLBACK ──────────────────────
+        # Wenn echter Scraper nichts liefert, simulieren wir alle 25s ein Inserat.
+        # Erstes Demo-Auto erscheint nach ~5 Sekunden (= sleep_time unten).
+        if real_added == 0 and (now - last_sim_time) >= SIM_INTERVAL:
             try:
                 from services.demo_data import generate_live_car
                 car_data = generate_live_car()
@@ -126,10 +120,10 @@ def live_scraper_loop(app):
                     scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
                     logger.info(f"[SIM] Demo-Inserat: {car_data['title']}")
             except Exception as e:
-                logger.debug(f"Demo-Simulation Fehler: {e}")
+                logger.warning(f"Demo-Simulation Fehler: {e}")
 
-        # Warten bis zum nächsten Zyklus (20 Sekunden)
-        time.sleep(20)
+        # Warten bis zum nächsten Zyklus (5 Sekunden — ermöglicht 25s/Demo)
+        time.sleep(5)
 
     scraper_status['running'] = False
     logger.info("Live-Scraper gestoppt")

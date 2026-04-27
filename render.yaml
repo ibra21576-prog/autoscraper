@@ -5,6 +5,6 @@ services:
     plan: free
     envVars:
       - key: LIVE_SCRAPE_ENABLED
-        value: "false"
+        value: "true"
       - key: SECRET_KEY
         generateValue: true

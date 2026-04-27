@@ -840,7 +840,7 @@ setInterval(async () => {
         // lastCarId auch ohne Match hochsetzen damit keine Duplikate
         cars.forEach(c => { if (c.id > lastCarId) lastCarId = c.id; });
     } catch(e) {}
-}, 15000);
+}, 7000);
 
 function bumpCount(n) {
     ['totalCount','resultCount'].forEach(id => {
