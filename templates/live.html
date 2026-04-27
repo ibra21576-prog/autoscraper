@@ -731,7 +731,10 @@
 
 {% block scripts %}
 <script>
-let lastCarId = {{ cars[0].id if cars else 0 }};
+// lastCarId = höchste ID unter allen aktuell gezeigten Autos
+// (nicht cars[0].id, das wäre die neueste first_seen, aber nicht unbedingt die größte ID)
+const _shownIds = {{ cars | map(attribute='id') | list | tojson }};
+let lastCarId = _shownIds.length ? Math.max(..._shownIds) : 0;
 
 // ---- Aktive Filter aus Server-Zustand ----
 const ACTIVE_FILTERS = {

@@ -286,9 +286,12 @@ def api_recent():
 
 @app.route('/api/scraper-status')
 def api_scraper_status():
-    """Live-Scraper Status."""
+    """Live-Scraper Status + DB-Zähler."""
     from services.live_scraper import get_scraper_status
-    return jsonify(get_scraper_status())
+    status = get_scraper_status()
+    status['db_total'] = Car.query.count()
+    status['db_newest_id'] = db.session.query(db.func.max(Car.id)).scalar() or 0
+    return jsonify(status)
 
 
 @app.route('/search')
