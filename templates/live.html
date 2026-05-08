@@ -928,6 +928,11 @@ setInterval(async () => {
     } catch(e) {}
 }, 5000);
 
+// ---- Keepalive: verhindert Render Free Tier Sleep (alle 8 Min) ----
+setInterval(() => {
+    fetch('/api/scraper-status').catch(() => {});
+}, 8 * 60 * 1000);
+
 // ---- Demo-Daten laden ----
 async function seedDemoData() {
     const btn = document.getElementById('seedBtn');

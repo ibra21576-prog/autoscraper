@@ -1,5 +1,4 @@
 import time
-import json
 import logging
 import threading
 from datetime import datetime
@@ -10,7 +9,7 @@ logger = logging.getLogger(__name__)
 # Queue für neue Autos (SSE-Stream)
 new_cars_queue = Queue()
 
-# Status
+# Status-Dict
 scraper_status = {
     'running': False,
     'total_found': 0,
@@ -19,9 +18,17 @@ scraper_status = {
     'errors': [],
 }
 
+# Thread-Referenz — damit is_alive() geprüft werden kann
+_scraper_thread = None
+
+
+def is_scraper_alive():
+    """True wenn der Scraper-Thread läuft (nicht geschlafen/gestorben)."""
+    return _scraper_thread is not None and _scraper_thread.is_alive()
+
 
 def _save_and_broadcast(app, car_data):
-    """Speichert ein Auto in der DB und pusht es in die SSE-Queue. Gibt Car zurück oder None."""
+    """Speichert ein Auto in der DB und pusht es in die SSE-Queue."""
     from models import db, Car, PriceHistory
     try:
         with app.app_context():
@@ -30,7 +37,7 @@ def _save_and_broadcast(app, car_data):
                 external_id=car_data.get('external_id')
             ).first()
             if existing:
-                return None  # bereits bekannt
+                return None
 
             car = Car(
                 platform=car_data.get('platform'),
@@ -71,10 +78,8 @@ def _save_and_broadcast(app, car_data):
 
 def live_scraper_loop(app):
     """
-    Hauptschleife des Live-Scrapers.
-    Versucht echtes Scraping (Kleinanzeigen). Da Datacenter-IPs geblockt
-    werden (403), fällt der Scraper automatisch auf Demo-Simulation zurück:
-    alle 30–90 Sekunden erscheint ein neues realistisches Inserat im Feed.
+    Haupt-Loop. Versucht echtes Scraping; fällt auf Demo-Simulation zurück
+    wenn Portale blockieren (403 von Datacenter-IPs).
     """
     from scrapers.kleinanzeigen import KleinanzeigenScraper
 
@@ -83,60 +88,56 @@ def live_scraper_loop(app):
     scraper_status['current_platform'] = 'kleinanzeigen'
     logger.info("Live-Scraper gestartet")
 
-    # Demo-Simulation: alle SIM_INTERVAL Sekunden ein neues Auto
-    SIM_INTERVAL = 25  # Sekunden zwischen zwei simulierten Inseraten
+    SIM_INTERVAL = 25   # Sekunden zwischen zwei simulierten Inseraten
     last_sim_time = 0
     iteration = 0
 
-    while scraper_status['running']:
-        iteration += 1
-        now = time.time()
+    try:
+        while True:
+            iteration += 1
+            now = time.time()
 
-        # ── Echter Scraper-Versuch (nur jede 4. Iteration um Last zu sparen) ──
-        real_added = 0
-        if iteration % 4 == 1:
-            try:
-                results = scraper.search(page=1)
-                for car_data in results:
-                    title_lower = (car_data.get('title') or '').lower()
-                    if any(t in title_lower for t in ('suche ', 'gesuch', '[suche]', 'wird gesucht', ' suche ')):
-                        continue
+            # ── Echter Scraper (nur jede 4. Runde) ───────────────────
+            real_added = 0
+            if iteration % 4 == 1:
+                try:
+                    results = scraper.search(page=1)
+                    for car_data in results:
+                        t = (car_data.get('title') or '').lower()
+                        if any(x in t for x in ('suche ', 'gesuch', '[suche]', 'wird gesucht', ' suche ')):
+                            continue
+                        if _save_and_broadcast(app, car_data):
+                            real_added += 1
+                    if real_added:
+                        logger.info(f"[LIVE] {real_added} echte Inserate")
+                except Exception as e:
+                    logger.debug(f"Scraper-Exception: {e}")
+
+            # ── Demo-Simulation als Fallback ──────────────────────────
+            if real_added == 0 and (now - last_sim_time) >= SIM_INTERVAL:
+                try:
+                    from services.demo_data import generate_live_car
+                    car_data = generate_live_car()
                     if _save_and_broadcast(app, car_data):
-                        real_added += 1
-                if real_added > 0:
-                    logger.info(f"[LIVE] {real_added} echte Inserate gefunden")
-            except Exception as e:
-                logger.debug(f"Scraper-Exception: {e}")
+                        last_sim_time = time.time()
+                        scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
+                        logger.info(f"[SIM] {car_data['title']}")
+                except Exception as e:
+                    logger.warning(f"Demo-Simulation Fehler: {e}")
 
-        # ── Demo-Simulation IMMER ALS FALLBACK ──────────────────────
-        # Wenn echter Scraper nichts liefert, simulieren wir alle 25s ein Inserat.
-        # Erstes Demo-Auto erscheint nach ~5 Sekunden (= sleep_time unten).
-        if real_added == 0 and (now - last_sim_time) >= SIM_INTERVAL:
-            try:
-                from services.demo_data import generate_live_car
-                car_data = generate_live_car()
-                if _save_and_broadcast(app, car_data):
-                    last_sim_time = time.time()
-                    scraper_status['last_scrape'] = datetime.utcnow().strftime('%H:%M:%S')
-                    logger.info(f"[SIM] Demo-Inserat: {car_data['title']}")
-            except Exception as e:
-                logger.warning(f"Demo-Simulation Fehler: {e}")
-
-        # Warten bis zum nächsten Zyklus (5 Sekunden — ermöglicht 25s/Demo)
-        time.sleep(5)
-
-    scraper_status['running'] = False
-    logger.info("Live-Scraper gestoppt")
+            time.sleep(5)
+    finally:
+        # Thread stirbt → Status zurücksetzen damit Self-Healing greift
+        scraper_status['running'] = False
+        logger.info("Live-Scraper gestoppt")
 
 
 def _seed_if_empty(app):
     """Befüllt die DB mit Demo-Daten wenn sie komplett leer ist."""
-    import time
     time.sleep(3)
     with app.app_context():
         from models import Car
-        count = Car.query.count()
-        if count == 0:
+        if Car.query.count() == 0:
             logger.info("[LIVE] DB leer — lade Demo-Daten...")
             from services.demo_data import seed_demo_data
             stored, _ = seed_demo_data(app, count=120)
@@ -144,20 +145,20 @@ def _seed_if_empty(app):
 
 
 def start_live_scraper(app):
-    """Live-Scraper als Daemon-Thread starten."""
-    # Demo-Seed im Hintergrund falls DB leer
+    """Live-Scraper starten. Gibt den Thread zurück."""
+    global _scraper_thread
     threading.Thread(target=_seed_if_empty, args=(app,), daemon=True).start()
-    thread = threading.Thread(target=live_scraper_loop, args=(app,), daemon=True)
-    thread.start()
+    _scraper_thread = threading.Thread(target=live_scraper_loop, args=(app,), daemon=True)
+    _scraper_thread.start()
     logger.info("Live-Scraper Thread gestartet")
-    return thread
+    return _scraper_thread
 
 
 def stop_live_scraper():
-    """Live-Scraper stoppen."""
     scraper_status['running'] = False
 
 
 def get_scraper_status():
-    """Aktuellen Status zurückgeben."""
-    return dict(scraper_status)
+    status = dict(scraper_status)
+    status['thread_alive'] = is_scraper_alive()
+    return status

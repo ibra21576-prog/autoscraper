@@ -688,12 +688,14 @@ def _startup():
 
 
 def _ensure_live_scraper():
-    """Self-Healing: prüft bei jedem Request ob der Scraper-Thread lebt."""
-    from services.live_scraper import scraper_status, start_live_scraper
-    if not scraper_status.get('running'):
+    """Self-Healing: prüft per thread.is_alive() ob der Scraper noch läuft.
+    Render Free Tier schläft nach 15 Min ein — dabei sterben Daemon-Threads,
+    aber scraper_status['running'] bleibt True. Deshalb is_alive() statt Status."""
+    from services.live_scraper import is_scraper_alive, start_live_scraper
+    if not is_scraper_alive():
         try:
             start_live_scraper(app)
-            logger.warning("Live-Scraper war tot — neu gestartet")
+            logger.warning("Live-Scraper war gestorben — neu gestartet")
         except Exception as e:
             logger.error(f"Live-Scraper-Restart fehlgeschlagen: {e}")
 
