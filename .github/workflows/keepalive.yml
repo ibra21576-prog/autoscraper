@@ -1,0 +1,17 @@
+name: Render Keepalive
+
+on:
+  schedule:
+    # Alle 10 Minuten — verhindert dass Render Free Tier einschläft
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # manuell auslösbar
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render App
+        run: |
+          curl -s -o /dev/null -w "Status: %{http_code}" \
+            --max-time 30 \
+            https://autoscraper-2.onrender.com/health || true

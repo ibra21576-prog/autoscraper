@@ -284,6 +284,14 @@ def api_recent():
     return jsonify([c.to_dict() for c in cars])
 
 
+@app.route('/health')
+def health():
+    """Health-Check für externe Keepalive-Dienste (GitHub Actions, UptimeRobot)."""
+    from services.live_scraper import is_scraper_alive
+    _ensure_live_scraper()
+    return jsonify({'status': 'ok', 'scraper': is_scraper_alive()})
+
+
 @app.route('/api/scraper-status')
 def api_scraper_status():
     """Live-Scraper Status + DB-Zähler."""
