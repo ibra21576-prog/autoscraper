@@ -616,6 +616,123 @@ def api_live_search():
     })
 
 
+# --- PREISRECHNER ---
+@app.route('/api/preisbewertung')
+def api_preisbewertung():
+    """
+    Berechnet den fairen Marktpreis für ein bestimmtes Fahrzeug
+    (Marke, Modell, exaktes Baujahr, KM-Stand) durch Preisanpassung
+    ähnlicher Inserate mit Depreciation-Formel.
+    """
+    import statistics as _stats
+    from sqlalchemy import func, or_, and_
+    from scrapers.base import normalize_brand, BRAND_NORMALIZE
+
+    brand     = request.args.get('brand', '').strip()
+    model     = request.args.get('model', '').strip()
+    year      = request.args.get('year', type=int)
+    mileage   = request.args.get('mileage', type=int)
+    fuel_type = request.args.get('fuel_type', '').strip()
+
+    if not brand or not year or mileage is None:
+        return jsonify({'error': 'Marke, Baujahr und KM-Stand erforderlich'}), 400
+
+    # ── Ähnliche Fahrzeuge aus DB holen ─────────────────────────────
+    query = Car.query.filter(
+        Car.price.isnot(None), Car.price >= 500, Car.price <= 300000,
+        Car.year.isnot(None),
+        Car.mileage.isnot(None),
+    )
+
+    canonical = normalize_brand(brand)
+    aliases = {canonical.lower(), brand.strip().lower()} | \
+              {k.lower() for k, v in BRAND_NORMALIZE.items() if v.lower() == canonical.lower()}
+    brand_match    = or_(*[func.lower(func.trim(Car.brand)) == a for a in aliases])
+    title_fallback = and_(Car.brand.is_(None), func.lower(Car.title).like(f'%{canonical.lower()}%'))
+    query = query.filter(or_(brand_match, title_fallback))
+
+    if model:
+        query = query.filter(
+            or_(func.lower(Car.model).contains(model.lower()),
+                func.lower(Car.title).contains(model.lower()))
+        )
+    if fuel_type:
+        query = query.filter(func.lower(Car.fuel_type).contains(fuel_type.lower()))
+
+    # Baujahr ±4 Jahre für genug Vergleichsdaten
+    query = query.filter(Car.year.between(year - 4, year + 4))
+
+    cars = query.all()
+
+    if len(cars) < 3:
+        # Nochmal ohne Jahreslimit versuchen
+        query2 = Car.query.filter(
+            Car.price.isnot(None), Car.price >= 500, Car.price <= 300000,
+            Car.year.isnot(None), Car.mileage.isnot(None),
+        )
+        query2 = query2.filter(or_(brand_match, title_fallback))
+        if model:
+            query2 = query2.filter(
+                or_(func.lower(Car.model).contains(model.lower()),
+                    func.lower(Car.title).contains(model.lower()))
+            )
+        cars = query2.all()
+
+    if not cars:
+        return jsonify({'error': 'Keine Vergleichsdaten gefunden', 'count': 0})
+
+    # ── Preisanpassung auf Ziel-Baujahr und -KM-Stand ───────────────
+    # Depreciation: 9% pro Jahr, 1.5% pro 10.000 km über/unter Zielwert
+    DEPR_YEAR = 0.09
+    DEPR_KM   = 0.015
+
+    adjusted = []
+    for c in cars:
+        price = c.price
+        year_diff  = year - c.year               # positiv = Ziel neuer → teurer
+        km_diff_10k = (c.mileage - mileage) / 10000  # positiv = mehr km → teurer ziel
+
+        year_factor = (1 + DEPR_YEAR) ** year_diff
+        km_factor   = 1 + DEPR_KM * km_diff_10k
+
+        adj = price * year_factor * km_factor
+        # Ausreißer rausfiltern (< 300 € oder > 500.000 €)
+        if 300 < adj < 500000:
+            adjusted.append(adj)
+
+    if not adjusted:
+        return jsonify({'error': 'Zu wenige valide Vergleichsdaten', 'count': 0})
+
+    adjusted.sort()
+    n = len(adjusted)
+    fair_price      = round(_stats.median(adjusted) / 50) * 50  # auf 50€ runden
+    mean_price      = round(_stats.mean(adjusted) / 50) * 50
+    cheap_threshold = round(adjusted[max(0, n // 4)] / 50) * 50   # Q1
+    exp_threshold   = round(adjusted[min(n - 1, (3 * n) // 4)] / 50) * 50  # Q3
+    price_min       = round(min(adjusted) / 100) * 100
+    price_max       = round(max(adjusted) / 100) * 100
+
+    # Konfidenz
+    if n >= 20:   confidence = 'high'
+    elif n >= 8:  confidence = 'medium'
+    else:         confidence = 'low'
+
+    return jsonify({
+        'fair_price':       fair_price,
+        'mean_price':       mean_price,
+        'cheap_threshold':  cheap_threshold,
+        'exp_threshold':    exp_threshold,
+        'price_min':        price_min,
+        'price_max':        price_max,
+        'count':            n,
+        'confidence':       confidence,
+        'brand':            canonical,
+        'model':            model,
+        'year':             year,
+        'mileage':          mileage,
+    })
+
+
 # --- MARKTANALYSE ---
 @app.route('/market')
 def market():

@@ -2,10 +2,10 @@
 {% block title %}Marktanalyse — SAIF{% endblock %}
 
 {% block hero %}
-<section style="background:#000;color:#fff;padding:3.5rem 0 2.5rem;text-align:center;">
-    <h1 style="font-family:'DM Serif Display',serif;font-size:2.6rem;margin:0 0 .5rem;">Marktanalyse</h1>
-    <p style="font-family:Inter,sans-serif;font-weight:300;color:#999;font-size:1.05rem;margin:0;">
-        Daten aus AutoScout24 &amp; Kleinanzeigen &mdash; automatisch gesammelt
+<section style="background:#000;color:#fff;padding:3rem 0 2rem;text-align:center;">
+    <h1 style="font-family:'DM Serif Display',serif;font-size:2.6rem;margin:0 0 .4rem;">Marktanalyse</h1>
+    <p style="font-family:Inter,sans-serif;font-weight:300;color:#999;font-size:1rem;margin:0;">
+        Fairen Marktpreis berechnen &amp; Angebote vergleichen
     </p>
 </section>
 {% endblock %}
@@ -51,6 +51,62 @@
     .tag-cheap{background:#dcfce7;color:#166534;}
     .tag-fair{background:#f0f0f0;color:#555;}
     .tag-exp{background:#fce4ec;color:#b71c1c;}
+    /* ── PREISRECHNER ── */
+    .pr-card{background:#fff;border:2px solid #111;border-radius:10px;padding:2rem;margin-bottom:2.5rem;}
+    .pr-header{display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.5rem;}
+    .pr-icon{font-size:2rem;line-height:1;}
+    .pr-title{font-family:'DM Serif Display',serif;font-size:1.4rem;color:#111;margin-bottom:.2rem;}
+    .pr-sub{font-family:Inter,sans-serif;font-size:.88rem;color:#777;}
+    .req{color:#e53;font-size:.85em;}
+    .pr-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin-bottom:1.2rem;}
+    .pr-group label{display:block;font-family:Inter,sans-serif;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#555;margin-bottom:.3rem;}
+    .pr-group select,.pr-group input{width:100%;padding:.6rem .75rem;border:1.5px solid #ddd;border-radius:6px;font-size:.95rem;font-family:Inter,sans-serif;background:#fff;color:#111;transition:border-color .2s;}
+    .pr-group select:focus,.pr-group input:focus{outline:none;border-color:#111;}
+    .pr-btn{background:#111;color:#fff;border:none;padding:.75rem 2.5rem;border-radius:6px;font-size:1rem;font-family:Inter,sans-serif;font-weight:600;cursor:pointer;transition:background .2s;letter-spacing:.02em;}
+    .pr-btn:hover{background:#333;}
+    .pr-btn:disabled{background:#aaa;cursor:not-allowed;}
+    .pr-divider{border:none;border-top:1px solid #e8e8e8;margin:1.5rem 0;}
+    /* Result */
+    .pr-result-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;}
+    .pr-result-label{font-family:Inter,sans-serif;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:.3rem;}
+    .pr-result-price{font-family:'DM Serif Display',serif;font-size:3rem;color:#111;line-height:1;}
+    .pr-result-meta{font-family:Inter,sans-serif;font-size:.83rem;color:#888;margin-top:.4rem;}
+    .pr-confidence{padding:.35rem .9rem;border-radius:20px;font-family:Inter,sans-serif;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;align-self:flex-start;}
+    .conf-high{background:#dcfce7;color:#166534;}
+    .conf-medium{background:#fef9c3;color:#854d0e;}
+    .conf-low{background:#fee2e2;color:#991b1b;}
+    /* Gauge */
+    .pr-gauge-wrap{margin-bottom:1.2rem;}
+    .pr-gauge-bar{display:flex;height:18px;border-radius:9px;overflow:visible;position:relative;margin-bottom:.5rem;}
+    .pr-gauge-zone{flex:1;}
+    .pr-gauge-zone.green{background:linear-gradient(90deg,#4ade80,#86efac);border-radius:9px 0 0 9px;}
+    .pr-gauge-zone.yellow{background:linear-gradient(90deg,#fde68a,#fbbf24);}
+    .pr-gauge-zone.red{background:linear-gradient(90deg,#f97316,#ef4444);border-radius:0 9px 9px 0;}
+    .pr-gauge-pointer{position:absolute;top:-5px;width:4px;height:28px;background:#111;border-radius:2px;transform:translateX(-50%);transition:left .5s ease;}
+    .pr-gauge-pointer::after{content:'▼';position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:.7rem;color:#111;}
+    .pr-gauge-labels{display:flex;justify-content:space-between;font-family:Inter,sans-serif;font-size:.72rem;color:#888;}
+    /* Zones */
+    .pr-zones{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem;}
+    @media(max-width:540px){.pr-zones{grid-template-columns:1fr;}}
+    .pr-zone{display:flex;align-items:flex-start;gap:.7rem;padding:.8rem;border-radius:7px;}
+    .pr-zone-green{background:#f0fdf4;}
+    .pr-zone-yellow{background:#fefce8;}
+    .pr-zone-red{background:#fff1f2;}
+    .pr-zone-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+    .pr-zone-dot.green{background:#22c55e;}
+    .pr-zone-dot.yellow{background:#eab308;}
+    .pr-zone-dot.red{background:#ef4444;}
+    .pr-zone-label{font-family:Inter,sans-serif;font-size:.82rem;font-weight:700;color:#111;}
+    .pr-zone-range{font-family:Inter,sans-serif;font-size:.8rem;color:#555;margin-top:.15rem;}
+    /* Check Result */
+    .pr-check-result{display:flex;align-items:center;gap:.75rem;padding:1rem 1.2rem;border-radius:8px;font-family:Inter,sans-serif;font-size:1rem;font-weight:600;margin-top:.5rem;}
+    .pr-check-cheap{background:#dcfce7;color:#166534;}
+    .pr-check-fair{background:#f1f5f9;color:#334155;}
+    .pr-check-exp{background:#fee2e2;color:#991b1b;}
+    .pr-check-icon{font-size:1.4rem;}
+    .pr-error{padding:.8rem 1rem;background:#fee2e2;color:#991b1b;border-radius:6px;font-family:Inter,sans-serif;font-size:.9rem;margin-top:1rem;}
+    .pr-loading{display:flex;align-items:center;gap:.8rem;padding:1rem 0;font-family:Inter,sans-serif;font-size:.9rem;color:#666;}
+
     /* Loading */
     .ma-loading{text-align:center;padding:3rem 0;display:none;}
     .ma-spinner{width:36px;height:36px;border:3px solid #ddd;border-top-color:#111;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem;}
@@ -59,6 +115,130 @@
 </style>
 
 <div class="ma-wrap">
+
+    <!-- ══════════════════════════════════════════════════════
+         PREISRECHNER — ganz oben, das Wichtigste zuerst
+         ══════════════════════════════════════════════════════ -->
+    <div class="pr-card" id="preisrechner">
+        <div class="pr-header">
+            <span class="pr-icon">🎯</span>
+            <div>
+                <div class="pr-title">Fairen Marktpreis berechnen</div>
+                <div class="pr-sub">Gib dein Wunschauto ein — wir sagen dir sofort was es kosten sollte</div>
+            </div>
+        </div>
+
+        <div class="pr-inputs">
+            <div class="pr-group">
+                <label>Marke <span class="req">*</span></label>
+                <select id="prBrand" onchange="prUpdateModels()">
+                    <option value="">Marke wählen</option>
+                    {% for b in car_brands %}
+                    <option value="{{ b }}">{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="pr-group">
+                <label>Modell</label>
+                <select id="prModel">
+                    <option value="">Alle Modelle</option>
+                </select>
+            </div>
+            <div class="pr-group">
+                <label>Baujahr <span class="req">*</span></label>
+                <input type="number" id="prYear" placeholder="z.B. 2018" min="1990" max="2026">
+            </div>
+            <div class="pr-group">
+                <label>KM-Stand <span class="req">*</span></label>
+                <input type="number" id="prMileage" placeholder="z.B. 80000" step="5000" min="0">
+            </div>
+            <div class="pr-group">
+                <label>Kraftstoff</label>
+                <select id="prFuel">
+                    <option value="">Alle</option>
+                    <option value="benzin">Benzin</option>
+                    <option value="diesel">Diesel</option>
+                    <option value="elektro">Elektro</option>
+                    <option value="hybrid">Hybrid</option>
+                </select>
+            </div>
+            <div class="pr-group">
+                <label>Angebotener Preis <span style="color:#aaa;font-weight:400;">(optional)</span></label>
+                <input type="number" id="prCheckPrice" placeholder="z.B. 12500" step="100" min="0">
+            </div>
+        </div>
+
+        <button class="pr-btn" onclick="calcPreis()" id="prBtn">
+            Preis berechnen →
+        </button>
+
+        <!-- Ergebnis -->
+        <div id="prResult" style="display:none;">
+            <div class="pr-divider"></div>
+
+            <!-- Hauptzahl -->
+            <div class="pr-result-head">
+                <div>
+                    <div class="pr-result-label">Fairer Marktpreis</div>
+                    <div class="pr-result-price" id="prFairPrice">–</div>
+                    <div class="pr-result-meta" id="prMeta"></div>
+                </div>
+                <div class="pr-confidence" id="prConfidence"></div>
+            </div>
+
+            <!-- Preisskala (Gauge) -->
+            <div class="pr-gauge-wrap">
+                <div class="pr-gauge-bar">
+                    <div class="pr-gauge-zone green"></div>
+                    <div class="pr-gauge-zone yellow"></div>
+                    <div class="pr-gauge-zone red"></div>
+                    <div class="pr-gauge-pointer" id="prPointer" style="display:none;"></div>
+                </div>
+                <div class="pr-gauge-labels">
+                    <span id="prLabelCheap"></span>
+                    <span id="prLabelFair"></span>
+                    <span id="prLabelExp"></span>
+                </div>
+            </div>
+
+            <!-- Zonen-Erklärung -->
+            <div class="pr-zones">
+                <div class="pr-zone pr-zone-green">
+                    <div class="pr-zone-dot green"></div>
+                    <div>
+                        <div class="pr-zone-label">Günstig</div>
+                        <div class="pr-zone-range" id="prRangeCheap"></div>
+                    </div>
+                </div>
+                <div class="pr-zone pr-zone-yellow">
+                    <div class="pr-zone-dot yellow"></div>
+                    <div>
+                        <div class="pr-zone-label">Fairer Preis</div>
+                        <div class="pr-zone-range" id="prRangeFair"></div>
+                    </div>
+                </div>
+                <div class="pr-zone pr-zone-red">
+                    <div class="pr-zone-dot red"></div>
+                    <div>
+                        <div class="pr-zone-label">Zu teuer</div>
+                        <div class="pr-zone-range" id="prRangeExp"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preis-Check (wenn angebotener Preis eingegeben) -->
+            <div id="prCheckResult" style="display:none;" class="pr-check-result">
+                <span id="prCheckIcon"></span>
+                <span id="prCheckText"></span>
+            </div>
+        </div>
+
+        <div id="prError" style="display:none;" class="pr-error"></div>
+        <div id="prLoading" style="display:none;" class="pr-loading">
+            <div class="ma-spinner"></div> Berechne Marktpreis...
+        </div>
+    </div>
+
     <!-- Status -->
     <div class="ma-status" id="bgStatus">
         <span class="dot {{ 'dot-green' if bg_status.last_run else 'dot-gray' }}" id="statusDot"></span>
@@ -197,6 +377,131 @@
 <script>
 const CAR_DATA = {{ car_data | tojson }};
 let priceChart = null, platformChart = null;
+
+// ── PREISRECHNER ────────────────────────────────────────────────────
+
+function prUpdateModels() {
+    const brand = document.getElementById('prBrand').value;
+    const sel   = document.getElementById('prModel');
+    sel.innerHTML = '<option value="">Alle Modelle</option>';
+    if (brand && CAR_DATA[brand]) {
+        CAR_DATA[brand].forEach(m => {
+            sel.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+    }
+}
+
+function fmtEur(n) {
+    if (!n && n !== 0) return '–';
+    return n.toLocaleString('de-DE') + ' €';
+}
+
+async function calcPreis() {
+    const brand    = document.getElementById('prBrand').value.trim();
+    const model    = document.getElementById('prModel').value.trim();
+    const year     = parseInt(document.getElementById('prYear').value);
+    const mileage  = parseInt(document.getElementById('prMileage').value);
+    const fuel     = document.getElementById('prFuel').value.trim();
+    const check    = parseInt(document.getElementById('prCheckPrice').value) || 0;
+
+    if (!brand || !year || isNaN(mileage)) {
+        document.getElementById('prError').textContent = 'Bitte Marke, Baujahr und KM-Stand angeben.';
+        document.getElementById('prError').style.display = 'block';
+        return;
+    }
+    document.getElementById('prError').style.display = 'none';
+    document.getElementById('prResult').style.display = 'none';
+    document.getElementById('prLoading').style.display = 'flex';
+    document.getElementById('prBtn').disabled = true;
+
+    const p = new URLSearchParams({ brand, year, mileage });
+    if (model)  p.set('model', model);
+    if (fuel)   p.set('fuel_type', fuel);
+
+    try {
+        const resp = await fetch('/api/preisbewertung?' + p.toString());
+        const d    = await resp.json();
+
+        document.getElementById('prLoading').style.display = 'none';
+        document.getElementById('prBtn').disabled = false;
+
+        if (d.error) {
+            document.getElementById('prError').textContent = d.error;
+            document.getElementById('prError').style.display = 'block';
+            return;
+        }
+
+        // ── Hauptpreis ──────────────────────────────────────────────
+        document.getElementById('prFairPrice').textContent = fmtEur(d.fair_price);
+        document.getElementById('prMeta').textContent =
+            `Basierend auf ${d.count} ähnlichen Inseraten · ${brand}${model ? ' ' + model : ''} · ${year} · ${mileage.toLocaleString('de-DE')} km`;
+
+        const confEl = document.getElementById('prConfidence');
+        const confMap = { high: ['Hohe Sicherheit','conf-high'], medium: ['Mittlere Sicherheit','conf-medium'], low: ['Wenige Daten','conf-low'] };
+        const [confText, confCls] = confMap[d.confidence] || ['–','conf-low'];
+        confEl.textContent  = confText;
+        confEl.className    = 'pr-confidence ' + confCls;
+
+        // ── Gauge ───────────────────────────────────────────────────
+        // Skala: price_min (links) bis price_max (rechts)
+        const span    = d.price_max - d.price_min || 1;
+        const fairPct = Math.min(95, Math.max(5, ((d.fair_price - d.price_min) / span) * 100));
+        const ptr = document.getElementById('prPointer');
+        ptr.style.left    = fairPct + '%';
+        ptr.style.display = 'block';
+
+        document.getElementById('prLabelCheap').textContent = fmtEur(d.price_min);
+        document.getElementById('prLabelFair').textContent  = 'Ø ' + fmtEur(d.fair_price);
+        document.getElementById('prLabelExp').textContent   = fmtEur(d.price_max);
+
+        // ── Zonen ───────────────────────────────────────────────────
+        document.getElementById('prRangeCheap').textContent = `unter ${fmtEur(d.cheap_threshold)}`;
+        document.getElementById('prRangeFair').textContent  = `${fmtEur(d.cheap_threshold)} – ${fmtEur(d.exp_threshold)}`;
+        document.getElementById('prRangeExp').textContent   = `über ${fmtEur(d.exp_threshold)}`;
+
+        // ── Preis-Check ─────────────────────────────────────────────
+        const checkEl = document.getElementById('prCheckResult');
+        if (check > 0) {
+            const diff = check - d.fair_price;
+            const absDiff = Math.abs(diff);
+            let cls, icon, text;
+            if (check < d.cheap_threshold) {
+                cls  = 'pr-check-cheap';
+                icon = '✅';
+                text = `Sehr günstig! Du sparst ca. ${fmtEur(absDiff)} gegenüber dem Marktpreis.`;
+            } else if (check <= d.exp_threshold) {
+                const hint = diff < 0
+                    ? `ca. ${fmtEur(absDiff)} unter Marktpreis`
+                    : diff > 0
+                        ? `ca. ${fmtEur(absDiff)} über Marktpreis`
+                        : 'genau Marktpreis';
+                cls  = 'pr-check-fair';
+                icon = '✓';
+                text = `Fairer Preis — ${hint}.`;
+            } else {
+                cls  = 'pr-check-exp';
+                icon = '⚠️';
+                text = `Zu teuer! Ca. ${fmtEur(absDiff)} über dem fairen Marktpreis.`;
+            }
+            checkEl.className = 'pr-check-result ' + cls;
+            document.getElementById('prCheckIcon').textContent = icon;
+            document.getElementById('prCheckText').textContent = `${fmtEur(check)} — ${text}`;
+            checkEl.style.display = 'flex';
+        } else {
+            checkEl.style.display = 'none';
+        }
+
+        document.getElementById('prResult').style.display = 'block';
+
+    } catch (err) {
+        document.getElementById('prLoading').style.display = 'none';
+        document.getElementById('prBtn').disabled = false;
+        document.getElementById('prError').textContent = 'Fehler beim Laden. Bitte erneut versuchen.';
+        document.getElementById('prError').style.display = 'block';
+    }
+}
+
+// ── MARKTANALYSE ────────────────────────────────────────────────────
 
 function updateModels() {
     const brand = document.getElementById('fBrand').value;
